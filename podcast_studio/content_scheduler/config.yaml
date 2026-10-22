@@ -1,0 +1,278 @@
+# ============================================================
+#  Content Scheduler – all configuration lives here.
+#  Passwords / tokens go in secrets.yaml (see secrets.example.yaml);
+#  it is merged on top of this file. Changes are picked up within
+#  a minute – no restart needed.
+# ============================================================
+
+app:
+  host: 127.0.0.1              # use 0.0.0.0 to reach it from your phone (snooze buttons)
+  port: 5050
+  public_url: ""               # e.g. http://192.168.1.50:5050 – enables Snooze/Done buttons in ntfy + email
+  timezone: America/New_York
+  check_time: "08:00"          # daily time reminders/auto-posts fire
+  upload_warning_days: 3       # warn this many days before content runs out
+  empty_window_days: 30        # remind if a series has nothing scheduled within this many days
+  empty_repeat_days: 7         # ...and repeat that reminder this often until something is queued
+  catchup_days: 7              # if the computer was off, replay up to this many missed days
+  data_file: data.json
+  inbox_folder: inbox          # finished episodes from podcast_pipeline land here and get queued automatically
+  secrets_file: secrets.yaml
+  open_browser_on_start: false  # tray.py: open the GUI automatically when it starts
+
+backup:
+  enabled: true
+  folder: backups
+  keep: 30                     # number of daily backups to keep
+
+snooze:
+  options_minutes: [60, 180, 1440]   # buttons shown in the GUI
+  ntfy_minutes: 120                  # the Snooze button on phone notifications
+
+# ------------------------------------------------------------
+#  Templates. Variables you can use anywhere:
+#   {series} {number} {title} {date} {site} {hashtags} {description}
+#  Can be overridden per series or per site inside a series.
+# ------------------------------------------------------------
+templates:
+  title: "{series} #{number} – {title}"
+  description: |
+    {description}
+
+    {hashtags}
+
+# ------------------------------------------------------------
+#  Sites. auto_post: true only works where an API exists and
+#  credentials are in secrets.yaml. Otherwise you get a reminder
+#  with the manual upload link. max_length warns in the GUI.
+# ------------------------------------------------------------
+sites:
+  youtube:
+    label: YouTube
+    upload_url: https://studio.youtube.com
+    auto_post: false           # true = upload the episode's video on its posting day
+    api: youtube               # Google OAuth (google section below)
+    format: wide               # wide = 16:9 episode video, vertical = 9:16 TikTok version
+    privacy_status: private    # private | unlisted | public – how auto-uploaded videos go up
+    max_length: 5000
+  twitter:
+    label: X / Twitter
+    upload_url: https://x.com/compose/post
+    auto_post: false
+    api: twitter               # auto-post sends text only – keep false to post the video yourself
+    format: wide
+    max_length: 280
+  tiktok:
+    label: TikTok
+    upload_url: https://www.tiktok.com/tiktokstudio/upload
+    auto_post: false           # Content Posting API requires an audited developer app
+    api: none
+    format: vertical
+    max_length: 2200
+  rumble:
+    label: Rumble
+    upload_url: https://rumble.com/upload.php
+    auto_post: false           # no public posting API
+    api: none
+    format: wide
+  instagram:
+    label: Instagram
+    upload_url: https://www.instagram.com/
+    auto_post: false           # Graph API: Business/Creator account + public media URL
+    api: instagram             # auto-post handles images only – keep false for videos
+    format: wide
+    max_length: 2200
+  substack:
+    label: Substack
+    upload_url: https://YOURNAME.substack.com/publish/post
+    auto_post: false           # no public posting API
+    api: none
+    format: wide
+  youtube_shorts:
+    label: YouTube Shorts
+    upload_url: https://studio.youtube.com
+    auto_post: false           # true = upload the 9:16 version through the same Google sign-in as YouTube
+    api: youtube
+    format: vertical
+    privacy_status: private
+    max_length: 5000
+  instagram_reels:
+    label: Instagram Reels
+    upload_url: https://www.instagram.com/
+    auto_post: false
+    api: none
+    format: vertical
+    max_length: 2200
+  facebook:
+    label: Facebook
+    upload_url: https://www.facebook.com/
+    auto_post: false
+    api: none
+    format: wide
+    max_length: 5000
+  facebook_reels:
+    label: Facebook Reels
+    upload_url: https://www.facebook.com/reels/create
+    auto_post: false
+    api: none
+    format: vertical
+    max_length: 2200
+  odysee:
+    label: Odysee
+    upload_url: https://odysee.com/$/upload
+    auto_post: false
+    api: none
+    format: wide
+  spotify:
+    label: Spotify
+    upload_url: https://creators.spotify.com/
+    auto_post: false           # video podcast episode
+    api: none
+    format: wide
+    max_length: 4000
+  website:
+    label: My Website
+    upload_url: https://example.com/wp-admin/post-new.php
+    auto_post: false
+    api: wordpress
+    base_url: https://example.com
+    post_status: draft         # draft | publish
+
+# ------------------------------------------------------------
+#  Series: same sites, same day every month.
+#  day_of_month 29-31 falls back to the last day in short months.
+#  start_number = episode number of the next post.
+#  site_overrides lets each site have its own description,
+#  hashtags, title_template or description_template.
+# ------------------------------------------------------------
+series:
+  - name: COCKu-YT
+    sites: [youtube, youtube_shorts, tiktok, instagram, instagram_reels, facebook, facebook_reels, twitter, rumble, odysee, spotify, substack]
+    day_of_month: 1
+    color: "#e85d4a"
+    start_number: 1
+    title_template: "{title}"
+    hashtags: ""
+    description: |
+      What is COCKu?
+
+      COCKu is a haiku about cock.
+
+      Duh!
+
+      So enjoy this luscious COCKu from the fine people at Luscious.Wang
+
+      For all your wang and wang-related news, COCKu's and the Circle Jerks Podcast, go to:
+
+      https://luscious.wang
+
+      Luscious.Wang
+
+      Much love to the juicy!
+
+  - name: Confuscius-YT
+    sites: [youtube, youtube_shorts, tiktok, instagram, instagram_reels, facebook, facebook_reels, twitter, rumble, odysee, spotify, substack]
+    day_of_month: 2
+    color: "#10b981"
+    start_number: 1
+    title_template: "{title}"
+    hashtags: ""
+    description: |
+      Confuscius say...
+      For more Confuscius wisdom, all your wang and wang-related news, COCKu's and the Circle Jerks Podcast, go to: https://luscious.wang
+
+      Luscious.Wang
+      Much love for the juicy!
+
+  - name: WITN-YT
+    sites: [youtube, youtube_shorts, tiktok, instagram, instagram_reels, facebook, facebook_reels, twitter, rumble, odysee, spotify, substack]
+    day_of_month: 18
+    color: "#a855f7"
+    start_number: 1
+    title_template: "{title}"
+    hashtags: ""
+    description: |
+      For all your wang and wang-related news and the Circle Jerks Podcast, go to https://luscious.wang
+
+  - name: Aesop's Fables-YT
+    sites: [youtube, youtube_shorts, tiktok, instagram, instagram_reels, facebook, facebook_reels, twitter, rumble, odysee, spotify, substack]
+    day_of_month: 29               # in February this falls back to the 28th
+    color: "#3b82f6"
+    start_number: 1
+    title_template: "{title}"
+    hashtags: ""
+    description: |
+      Enjoy another newly translated fable from Aesop brought to you by the Paleography department of Luscious.Wang.
+
+      For more Aesop's fables, all your wang and wang-related news, COCKu's and the Circle Jerks Podcast, go to https://luscious.wang
+
+      Much love to the juicy!
+
+# ------------------------------------------------------------
+#  Articles: used only to seed the list the first time.
+#  After that, add/edit/delete articles in the GUI.
+# ------------------------------------------------------------
+articles:
+  - title: Sample Article
+    url: https://example.com/sample-article
+    summary: A short summary that appears in the email body.
+    image_url: ""
+
+# ------------------------------------------------------------
+#  Email (article sending AND email reminders).
+#  Templates: {title} {summary} {url} {image_url} {from_name}
+#  In the HTML template, {image_html} becomes an <img> if the
+#  article has an image_url, otherwise nothing.
+# ------------------------------------------------------------
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  use_tls: true
+  username: you@gmail.com
+  from_name: Your Name
+  from_address: you@gmail.com
+  article_subject_template: "New article: {title}"
+  article_body_template: |
+    Hi,
+
+    {summary}
+
+    Read it here: {url}
+
+    – {from_name}
+  article_html_template: |
+    <div style="font-family:Georgia,serif;max-width:600px;margin:auto;color:#222">
+      <h2 style="margin-bottom:6px">{title}</h2>
+      {image_html}
+      <p style="font-size:16px;line-height:1.5">{summary}</p>
+      <p><a href="{url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Read the article</a></p>
+      <p style="color:#888;font-size:13px">– {from_name}</p>
+    </div>
+  recipient_lists:
+    subscribers: [friend1@example.com, friend2@example.com]
+    family: [mom@example.com]
+
+# ------------------------------------------------------------
+#  Reminder channels – enable any combination.
+# ------------------------------------------------------------
+reminders:
+  ntfy:
+    enabled: true
+    server: https://ntfy.sh
+    topic: my-content-reminders-CHANGE-ME
+  pushbullet:
+    enabled: false
+  email:
+    enabled: false
+    recipients: [you@gmail.com]
+  google_tasks:
+    enabled: false
+    tasklist_id: "@default"
+  google_calendar:
+    enabled: false
+    calendar_id: primary
+    event_hour: 9
+
+google:
+  credentials_file: google_credentials.json   # OAuth client (Desktop app) from Google Cloud Console
+  token_file: google_token.json

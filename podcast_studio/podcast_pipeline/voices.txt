@@ -1,0 +1,118 @@
+--- Casual ---
+  en-US-Casual-K               Male       24000 Hz
+
+--- Chirp ---
+  en-US-Chirp-HD-D             Male       24000 Hz
+  en-US-Chirp-HD-F             Female     24000 Hz
+  en-US-Chirp-HD-O             Female     24000 Hz
+
+--- Chirp3 ---
+  en-US-Chirp3-HD-Achernar     Female     24000 Hz
+  en-US-Chirp3-HD-Achird       Male       24000 Hz
+  en-US-Chirp3-HD-Algenib      Male       24000 Hz
+  en-US-Chirp3-HD-Algieba      Male       24000 Hz
+  en-US-Chirp3-HD-Alnilam      Male       24000 Hz
+  en-US-Chirp3-HD-Aoede        Female     24000 Hz
+  en-US-Chirp3-HD-Autonoe      Female     24000 Hz
+  en-US-Chirp3-HD-Callirrhoe   Female     24000 Hz
+  en-US-Chirp3-HD-Charon       Male       24000 Hz
+  en-US-Chirp3-HD-Despina      Female     24000 Hz
+  en-US-Chirp3-HD-Enceladus    Male       24000 Hz
+  en-US-Chirp3-HD-Erinome      Female     24000 Hz
+  en-US-Chirp3-HD-Fenrir       Male       24000 Hz
+  en-US-Chirp3-HD-Gacrux       Female     24000 Hz
+  en-US-Chirp3-HD-Iapetus      Male       24000 Hz
+  en-US-Chirp3-HD-Kore         Female     24000 Hz
+  en-US-Chirp3-HD-Laomedeia    Female     24000 Hz
+  en-US-Chirp3-HD-Leda         Female     24000 Hz
+  en-US-Chirp3-HD-Orus         Male       24000 Hz
+  en-US-Chirp3-HD-Puck         Male       24000 Hz
+  en-US-Chirp3-HD-Pulcherrima  Female     24000 Hz
+  en-US-Chirp3-HD-Rasalgethi   Male       24000 Hz
+  en-US-Chirp3-HD-Sadachbia    Male       24000 Hz
+  en-US-Chirp3-HD-Sadaltager   Male       24000 Hz
+  en-US-Chirp3-HD-Schedar      Male       24000 Hz
+  en-US-Chirp3-HD-Sulafat      Female     24000 Hz
+  en-US-Chirp3-HD-Umbriel      Male       24000 Hz
+  en-US-Chirp3-HD-Vindemiatrix Female     24000 Hz
+  en-US-Chirp3-HD-Zephyr       Female     24000 Hz
+  en-US-Chirp3-HD-Zubenelgenubi Male       24000 Hz
+
+--- Neural2 ---
+  en-US-Neural2-A              Male       24000 Hz
+  en-US-Neural2-C              Female     24000 Hz
+  en-US-Neural2-D              Male       24000 Hz
+  en-US-Neural2-E              Female     24000 Hz
+  en-US-Neural2-F              Female     24000 Hz
+  en-US-Neural2-G              Female     24000 Hz
+  en-US-Neural2-H              Female     24000 Hz
+  en-US-Neural2-I              Male       24000 Hz
+  en-US-Neural2-J              Male       24000 Hz
+
+--- News ---
+  en-US-News-K                 Female     24000 Hz
+  en-US-News-L                 Female     24000 Hz
+  en-US-News-N                 Male       24000 Hz*
+
+--- Other ---
+  Achernar                     Female     24000 Hz
+  Achird                       Male       24000 Hz
+  Algenib                      Male       24000 Hz
+  Algieba                      Male       24000 Hz
+  Alnilam                      Male       24000 Hz
+  Aoede                        Female     24000 Hz
+  Autonoe                      Female     24000 Hz
+  Callirrhoe                   Female     24000 Hz
+  Charon                       Male       24000 Hz
+  Despina                      Female     24000 Hz
+  Enceladus                    Male       24000 Hz
+  Erinome                      Female     24000 Hz
+  Fenrir                       Male       24000 Hz
+  Gacrux                       Female     24000 Hz
+  Iapetus                      Male       24000 Hz
+  Kore                         Female     24000 Hz
+  Laomedeia                    Female     24000 Hz
+  Leda                         Female     24000 Hz
+  Orus                         Male       24000 Hz
+  Puck                         Male       24000 Hz
+  Pulcherrima                  Female     24000 Hz
+  Rasalgethi                   Male       24000 Hz
+  Sadachbia                    Male       24000 Hz
+  Sadaltager                   Male       24000 Hz
+  Schedar                      Male       24000 Hz
+  Sulafat                      Female     24000 Hz
+  Umbriel                      Male       24000 Hz
+  Vindemiatrix                 Female     24000 Hz
+  Zephyr                       Female     24000 Hz
+  Zubenelgenubi                Male       24000 Hz
+
+--- Polyglot ---
+  en-US-Polyglot-1             Male       24000 Hz
+
+--- Standard ---
+  en-US-Standard-A             Male       24000 Hz
+  en-US-Standard-B             Male       24000 Hz
+  en-US-Standard-C             Female     24000 Hz
+  en-US-Standard-D             Male       24000 Hz
+  en-US-Standard-E             Female     24000 Hz
+  en-US-Standard-F             Female     24000 Hz
+  en-US-Standard-G             Female     24000 Hz
+  en-US-Standard-H             Female     24000 Hz
+  en-US-Standard-I             Male       24000 Hz
+  en-US-Standard-J             Male       24000 Hz
+
+--- Studio ---
+  en-US-Studio-O               Female     24000 Hz
+  en-US-Studio-Q               Male       24000 Hz
+
+--- Wavenet ---
+  en-US-Wavenet-A              Male       24000 Hz
+  en-US-Wavenet-B              Male       24000 Hz
+  en-US-Wavenet-C              Female     24000 Hz
+  en-US-Wavenet-D              Male       24000 Hz
+  en-US-Wavenet-E              Female     24000 Hz
+  en-US-Wavenet-F              Female     24000 Hz
+  en-US-Wavenet-G              Female     24000 Hz
+  en-US-Wavenet-H              Female     24000 Hz
+  en-US-Wavenet-I              Male       24000 Hz
+  en-US-Wavenet-J              Male       24000 Hz

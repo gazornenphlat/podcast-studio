@@ -1,0 +1,1 @@
+python aesop.py --script script.txt --tiktok  --tts-engine kokoro

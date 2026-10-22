@@ -1,0 +1,322 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Content Scheduler</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1f2328;--mute:#6b7280;--line:#e5e7eb;--acc:#2563eb;--soft:#eef2ff;--warn:#b45309;--bad:#dc2626;--ok:#15803d}
+*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;flex:1}
+main{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;padding:18px;max-width:1350px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:18px}
+h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}h2 .sp{flex:1}
+h3{font-size:13px;margin:18px 0 6px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff;color:inherit}
+textarea{min-height:70px;resize:vertical}
+button{padding:7px 12px;border:0;border-radius:6px;background:var(--acc);color:#fff;cursor:pointer;font:inherit;white-space:nowrap}
+button.ghost{background:var(--soft);color:var(--acc)}button.tiny{padding:2px 7px;font-size:12px;background:transparent;color:var(--mute)}
+button.tiny:hover{color:var(--acc)}button.del:hover{color:var(--bad)}button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px;align-items:flex-end}.row>*{flex:1}.row>.fit{flex:0 0 auto}
+.muted{color:var(--mute)}.small{font-size:12px}
+.status{font-size:13px;line-height:1.7}
+.chip{display:inline-block;padding:2px 8px;border-radius:12px;background:#f1f5f9;font-size:12px;margin:2px 4px 2px 0}
+.list{list-style:none;padding:0;margin:6px 0 0;max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.list li{display:flex;gap:6px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}.list li>span{flex:1}.list li.next{background:#f0fdf4}
+.tag{font-size:11px;padding:1px 6px;border-radius:8px;background:#dcfce7;color:var(--ok)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}.tabs button{background:#f1f5f9;color:var(--ink)}
+.tabs button.on{background:var(--acc);color:#fff}
+.post pre{white-space:pre-wrap;font:13px/1.5 system-ui;background:#f8fafc;border:1px solid var(--line);border-radius:6px;padding:8px;margin:4px 0}
+.over{color:var(--bad);font-weight:600}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.day{min-height:54px;border:1px solid var(--line);border-radius:6px;padding:4px;font-size:11px;cursor:pointer}
+.day:hover{border-color:var(--acc)}.day b{color:var(--mute)}
+.pill{display:block;color:#fff;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.need{display:block;border:1.5px dashed;border-radius:4px;padding:0 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:12px}
+.legend label{display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);cursor:pointer}
+.swatch{width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;cursor:pointer;background:none}
+.swatch::-webkit-color-swatch-wrapper{padding:2px}.swatch::-webkit-color-swatch{border:0;border-radius:4px}
+.sitepick{display:flex;flex-wrap:wrap;gap:6px}.sitepick label{display:flex;gap:5px;align-items:center;margin:0;padding:5px 9px;border:1px solid var(--line);border-radius:14px;color:var(--ink);cursor:pointer}
+.sitepick input{width:auto;margin:0}.day.empty:hover::after{content:"+ new";color:var(--acc);display:block;margin-top:6px}
+dialog{max-height:92vh;overflow:auto}
+.rem{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.rem .t{font-weight:600}.rem .b{white-space:pre-wrap;font-size:12px;color:var(--mute);margin:4px 0}
+.log{font:12px ui-monospace,monospace;max-height:220px;overflow:auto;color:var(--mute);line-height:1.6}
+.art{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.art:last-child{border-bottom:0}
+.art>div{flex:1;min-width:0}.art a{font-size:12px;word-break:break-all}
+dialog{border:0;border-radius:10px;padding:20px;width:min(480px,92vw)}dialog::backdrop{background:#0006}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 14px;border-radius:6px;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+</style></head><body>
+<header><h1>Content Scheduler</h1>
+ <button class="ghost" onclick="act('/api/test-reminder').then(r=>toast(r.errors.length?r.errors.join(' | '):'Test reminder sent'))">Test reminders</button>
+ <button class="ghost" onclick="act('/api/run-now').then(()=>toast('Today\'s check ran'))">Run today's check</button>
+ <button class="ghost" onclick="act('/api/backup').then(()=>toast('Backup saved'))">Back up now</button>
+</header>
+<main>
+<section>
+ <div class="card">
+  <h2>Series</h2>
+  <div class="row" style="align-items:center">
+   <select id="ser" onchange="showSeries()"></select>
+   <input type="color" class="swatch fit" id="serColor" title="Series color on the calendar" onchange="setColor(curName(), this.value)">
+   <button class="tiny fit" title="Reset to the color in config.yaml" onclick="setColor(curName(), '')">reset</button>
+   <button class="ghost fit" onclick="editSeries(curName())">Edit</button>
+   <button class="ghost fit" onclick="editSeries()">+ New series</button>
+  </div>
+  <div class="status" id="info" style="margin-top:10px"></div>
+
+  <h3>Content queue</h3>
+  <ul class="list" id="queue"></ul>
+  <div class="row" style="margin-top:6px">
+   <button id="postedBtn" onclick="markPosted()">✓ Mark next as posted</button>
+  </div>
+  <label>Add to queue – one title per line (first in line posts next)</label>
+  <textarea id="qAdd" placeholder="Episode 15 – Canals&#10;Episode 16 – Locks"></textarea>
+  <button class="ghost" style="margin-top:6px" onclick="queueAdd()">Add to queue</button>
+
+  <h3>Post text by site</h3>
+  <div class="tabs" id="siteTabs"></div>
+  <div id="postBox" class="post"></div>
+
+  <h3>Update series</h3>
+  <div class="row">
+   <div><label>Need more content by <span class="muted">(blank = work it out from the queue)</span></label><input type="date" id="need"></div>
+   <div class="fit" style="width:110px"><label>Next number</label><input type="number" id="num" min="1"></div>
+  </div>
+  <label>Last uploaded content</label><input id="last" placeholder="e.g. Episode 14 – Bridges">
+  <label>Content titles already posted – one per line (added to Past Posts)</label>
+  <textarea id="titles" placeholder="Episode 12 – Rivers&#10;Episode 13 – Dams"></textarea>
+  <button style="margin-top:8px" onclick="saveSeries()">Save</button>
+
+  <h3>Past posts <span id="pastCount"></span></h3>
+  <input id="pastFilter" placeholder="Filter…" oninput="drawPast()">
+  <ul class="list" id="past"></ul>
+ </div>
+</section>
+
+<section>
+ <div class="card"><h2>Open reminders</h2><div id="rems"></div></div>
+ <div class="card"><h2>Monthly pattern <span class="muted small" style="font-weight:400">click a day to open that series</span></h2><div class="cal" id="cal"></div><div class="legend" id="legend"></div></div>
+ <div class="card"><h2>Articles<span class="sp"></span><button class="ghost" onclick="editArticle()">+ Add article</button></h2>
+  <div id="arts"></div>
+  <h3>Scheduled emails</h3><div id="emails" class="status"></div>
+ </div>
+ <div class="card"><h2>Activity</h2><div class="log" id="log"></div></div>
+</section>
+</main>
+
+<dialog id="serDlg"><h2 id="sHead">Series</h2>
+ <input type="hidden" id="sOrig">
+ <div class="row">
+  <div><label>Name</label><input id="sName" placeholder="e.g. COCKu-YT"></div>
+  <div class="fit" style="width:110px"><label>Day of month</label><input type="number" id="sDay" min="1" max="31"></div>
+  <div class="fit"><label>Color</label><input type="color" class="swatch" id="sColor" style="width:40px;height:36px"></div>
+ </div>
+ <label>Post to</label><div id="sSites" class="sitepick"></div>
+ <label>Description</label><textarea id="sDesc" style="min-height:140px"></textarea>
+ <label>Hashtags (optional)</label><input id="sTags" placeholder="#tag1 #tag2">
+ <label>Title template (optional – blank uses the default from config.yaml)</label><input id="sTitleT" placeholder="{title}   or   {series} #{number} – {title}">
+ <p class="small muted" id="sDayNote"></p>
+ <div class="row" style="margin-top:10px">
+  <button class="ghost fit del" id="sDel" style="color:var(--bad)" onclick="deleteSeries()">Delete series</button><span></span>
+  <button class="ghost fit" onclick="serDlg.close()">Cancel</button><button class="fit" onclick="saveSeriesDef()">Save</button>
+ </div>
+</dialog>
+
+<dialog id="artDlg"><h2 id="artHead">Article</h2>
+ <input type="hidden" id="aId">
+ <label>Title</label><input id="aTitle">
+ <label>URL</label><input id="aUrl" placeholder="https://">
+ <label>Summary (goes in the email)</label><textarea id="aSum"></textarea>
+ <label>Image URL (optional, shown in HTML email)</label><input id="aImg" placeholder="https://">
+ <div class="row" style="margin-top:14px"><button class="ghost" onclick="artDlg.close()">Cancel</button><button onclick="saveArticle()">Save</button></div>
+</dialog>
+
+<dialog id="emailDlg"><h2 id="eTitle"></h2>
+ <label>Recipient list</label><select id="eList"></select>
+ <label>Extra addresses (comma separated)</label><input id="eExtra">
+ <label>Send at</label><input type="datetime-local" id="eAt">
+ <p class="small"><a id="ePrev" target="_blank">Preview the email ↗</a></p>
+ <div class="row" style="margin-top:10px"><button class="ghost" onclick="emailDlg.close()">Cancel</button><button onclick="sendEmail()">Schedule</button></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let S, curSite = {};
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtMin = m => m % 1440 === 0 ? (m/1440)+'d' : m % 60 === 0 ? (m/60)+'h' : m+'m';
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200);}
+async function act(url, body){
+  const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok){toast(j.error||'Something went wrong');throw new Error(j.error);}
+  await load(); return j;
+}
+const curName = () => $('ser').value;
+const ST = () => S.state[curName()] || {};
+const SER = () => S.series.find(s => s.name === curName());
+
+async function load(){
+  S = await (await fetch('/api/state')).json();
+  const sel = $('ser'), cur = sel.value;
+  sel.innerHTML = [...S.series].sort((a,b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base', numeric:true})).map(s => `<option>${esc(s.name)}</option>`).join('');
+  if (cur && S.series.some(s => s.name === cur)) sel.value = cur;
+  drawSeries(); drawCal(); drawLegend(); drawRems(); drawArts();
+  $('log').innerHTML = S.log.map(esc).join('<br>') || 'No activity yet.';
+}
+function showSeries(){ $('need').value=''; $('last').value=''; $('titles').value=''; $('pastFilter').value=''; drawSeries(true); }
+
+function drawSeries(fresh){
+  const s = SER(), st = ST(); if(!s) return;
+  if (fresh || document.activeElement !== $('need')) $('need').value = st.need_content_by || '';
+  if (fresh || document.activeElement !== $('num')) $('num').value = st.next_number;
+  $('serColor').value = st.color || '#64748b';
+  const q = st.queue || [];
+  $('info').innerHTML =
+    `Posts on day <b>${s.day_of_month}</b> each month · next: <b>${st.next_date}</b> · next number: <b>#${st.next_number}</b><br>`+
+    `Last uploaded: <b>${esc(st.last_content||'—')}</b> ${st.last_updated?'<span class="muted">('+st.last_updated+')</span>':''}<br>`+
+    `Content needed by: <b>${st.needed_by}</b> <span class="muted">(${st.needed_by_source==='manual'?'set by you':q.length+' queued'})</span><br>`+
+    s.sites.map(k => { const x=S.sites[k]||{label:k}; return `<a class="chip" href="${esc(x.upload_url)}" target="_blank" style="text-decoration:none;color:inherit">${esc(x.label)} ${x.auto_post?'<span class="tag">auto</span>':'↗'}</a>`; }).join('');
+  const qd = st.queue_dates || [], md = st.media || {};
+  $('queue').innerHTML = q.length ? q.map((t,i) => `<li class="${i?'':'next'}"><span>${i?'':'<span class="tag">next</span> '}${esc(t)}${md[t]&&md[t].video?` <span title="${esc(md[t].video)}">🎬</span>`:''} <span class="muted">${qd[i]||''}</span></span>
+      <button class="tiny" title="Up" ${i?'':'disabled'} onclick="qAct('move',{index:${i},dir:-1})">↑</button>
+      <button class="tiny" title="Down" ${i<q.length-1?'':'disabled'} onclick="qAct('move',{index:${i},dir:1})">↓</button>
+      <button class="tiny" title="Rename" onclick="qEdit(${i})">✎</button>
+      <button class="tiny del" title="Remove" onclick="qAct('remove',{index:${i}})">✕</button></li>`).join('')
+    : '<li class="muted">Queue is empty – add titles below</li>';
+  $('postedBtn').disabled = !q.length;
+  drawPosts(); drawPast();
+}
+
+function drawPosts(){
+  const posts = ST().posts || [];
+  if (!posts.length){ $('siteTabs').innerHTML=''; $('postBox').innerHTML=''; return; }
+  let site = curSite[curName()]; if (!posts.some(p=>p.site===site)) site = posts[0].site;
+  curSite[curName()] = site;
+  $('siteTabs').innerHTML = posts.map(p => `<button class="${p.site===site?'on':''}" onclick="curSite[curName()]='${p.site}';drawPosts()">${esc(p.label)}${p.over?' ⚠':''}</button>`).join('');
+  const p = posts.find(x => x.site === site);
+  window._post = p;
+  $('postBox').innerHTML =
+    `<div class="row"><label style="margin:0">Title</label><button class="tiny fit" onclick="copy(_post.title,this)">Copy</button></div><pre>${esc(p.title)||'<span class=muted>(queue is empty)</span>'}</pre>`+
+    `<div class="row"><label style="margin:0">Description <span class="${p.over?'over':''}">${p.length}${p.max_length?' / '+p.max_length:''} chars${p.over?' – too long for '+esc(p.label):''}</span></label><button class="tiny fit" onclick="copy(_post.description,this)">Copy</button></div><pre>${esc(p.description)}</pre>`+
+    `<div class="row"><button class="ghost fit" onclick="copy(_post.title+'\\n\\n'+_post.description,this)">Copy both</button><a class="fit small" href="${esc(p.upload_url)}" target="_blank">Open ${esc(p.label)} upload page ↗</a></div>`;
+}
+function copy(t, b){ navigator.clipboard.writeText(t); const o=b.textContent; b.textContent='Copied!'; setTimeout(()=>b.textContent=o,1100); }
+
+function drawPast(){
+  const all = ST().past_posts || [], f = $('pastFilter').value.toLowerCase();
+  const list = all.filter(t => t.toLowerCase().includes(f));
+  $('pastCount').textContent = `(${all.length})`;
+  $('past').innerHTML = list.length ? list.map(t => `<li><span>${esc(t)}</span><button class="tiny del" title="Remove" data-t="${esc(t)}" onclick="delPast(this.dataset.t)">✕</button></li>`).join('') : '<li class="muted">None yet</li>';
+}
+
+const qAct = (a, extra) => act('/api/queue/'+a, {name:curName(), ...extra});
+async function queueAdd(){ if(!$('qAdd').value.trim()) return; await qAct('add',{titles:$('qAdd').value}); $('qAdd').value=''; toast('Added to queue'); }
+async function qEdit(i){ const t = prompt('Rename', ST().queue[i]); if (t && t.trim()) await qAct('edit',{index:i,title:t}); }
+async function markPosted(){ const t=(ST().queue||[])[0]; if(t && confirm(`Mark "${t}" as posted?\nIt moves to Past Posts and becomes "last uploaded".`)){ await qAct('posted'); toast('Marked posted'); } }
+async function delPast(t){ if (confirm(`Remove "${t}" from Past Posts?`)) await act('/api/past-post/delete',{name:curName(),title:t}); }
+async function saveSeries(){
+  await act('/api/series',{name:curName(),need_content_by:$('need').value,last_content:$('last').value,titles:$('titles').value,next_number:$('num').value});
+  $('last').value=''; $('titles').value=''; toast('Saved');
+}
+
+function drawCal(){
+  let h='';
+  for (let d=1; d<=31; d++){
+    const on = S.series.filter(s => s.day_of_month === d);
+    const need = S.series.filter(s => { const n=(S.state[s.name]||{}).needed_by; return n && +n.slice(8,10) === d; });
+    h += `<div class="day${on.length||need.length?'':' empty'}" onclick="pickDay(${d})"><b>${d}</b>`+on.map(s =>
+      `<span class="pill" style="background:${esc(colorOf(s.name))}" title="${esc(s.sites.map(k=>(S.sites[k]||{label:k}).label).join(', '))}">${esc(s.name)}</span>`).join('')+
+      need.map(s => { const n=S.state[s.name].needed_by, dt=new Date(n+'T00:00');
+        return `<span class="need" style="border-color:${esc(colorOf(s.name))};color:${esc(colorOf(s.name))}" title="${esc(s.name)} needs new content by ${n}">⚠ Need by ${dt.toLocaleDateString(undefined,{month:'short',day:'numeric'})}: ${esc(s.name)}</span>`; }).join('')+'</div>';
+  }
+  $('cal').innerHTML = h;
+}
+const colorOf = n => (S.state[n]||{}).color || '#64748b';
+function drawLegend(){
+  $('legend').innerHTML = S.series.map(s => `<label title="Change color for ${esc(s.name)}">
+    <input type="color" class="swatch" value="${esc(colorOf(s.name))}" data-n="${esc(s.name)}" onchange="setColor(this.dataset.n, this.value)">
+    ${esc(s.name)}</label>`).join('');
+}
+async function setColor(n, c){ await act('/api/series/color',{name:n,color:c}); toast(c ? 'Color updated' : 'Color reset'); }
+function pickDay(d){ const on = S.series.filter(s=>s.day_of_month===d || +((S.state[s.name]||{}).needed_by||'').slice(8,10)===d); if(!on.length){ editSeries(null, d); return; } $('ser').value = on[0].name; showSeries(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function drawRems(){
+  const r = S.reminders;
+  $('rems').innerHTML = r.length ? r.slice().reverse().map(x => `<div class="rem"><div class="t">${esc(x.title)}</div>
+    <div class="b">${esc(x.body)}${x.snoozed_until?'\n⏰ snoozed until '+esc(x.snoozed_until.replace('T',' ').slice(0,16)):''}</div>
+    <div class="row" style="flex-wrap:wrap">${x.link?`<a class="fit small" href="${esc(x.link)}" target="_blank">Open upload page ↗</a>`:''}
+      <span></span>${S.snooze_options.map(m=>`<button class="ghost fit" onclick="act('/api/reminder/${x.id}/snooze',{minutes:${m}})">Snooze ${fmtMin(m)}</button>`).join('')}
+      <button class="fit" onclick="act('/api/reminder/${x.id}/done')">Done</button></div></div>`).join('')
+    : '<span class="muted">Nothing waiting on you.</span>';
+}
+
+function drawArts(){
+  $('arts').innerHTML = S.articles.length ? S.articles.map(a => `<div class="art"><div><b>${esc(a.title)}</b><br><a href="${esc(a.url)}" target="_blank">${esc(a.url)}</a></div>
+     <button class="tiny" onclick="editArticle('${a.id}')">Edit</button>
+     <button class="tiny del" onclick="delArticle('${a.id}')">Delete</button>
+     <button class="fit" onclick="openEmail('${a.id}')">Email…</button></div>`).join('')
+    : '<span class="muted">No articles yet.</span>';
+  $('emails').innerHTML = S.emails.length ? S.emails.map(e => `${esc(e.send_at.replace('T',' '))} – ${esc(e.title)} → ${e.to.length} recipient(s) – <b>${esc(e.status)}</b>
+     ${e.status==='pending'?`<button class="tiny del" onclick="act('/api/email/${e.id}/cancel')">cancel</button>`:''}`).join('<br>') : '<span class="muted">None scheduled.</span>';
+}
+function editArticle(id){
+  const a = S.articles.find(x => x.id === id) || {};
+  $('artHead').textContent = id ? 'Edit article' : 'Add article';
+  $('aId').value=a.id||''; $('aTitle').value=a.title||''; $('aUrl').value=a.url||''; $('aSum').value=a.summary||''; $('aImg').value=a.image_url||'';
+  $('artDlg').showModal();
+}
+async function saveArticle(){
+  await act('/api/articles',{id:$('aId').value,title:$('aTitle').value,url:$('aUrl').value,summary:$('aSum').value,image_url:$('aImg').value});
+  $('artDlg').close(); toast('Article saved');
+}
+async function delArticle(id){ const a=S.articles.find(x=>x.id===id); if(confirm(`Delete "${a.title}"?`)) await act(`/api/articles/${id}/delete`); }
+let curArt;
+function openEmail(id){
+  curArt = id; const a = S.articles.find(x=>x.id===id);
+  $('eTitle').textContent = 'Email: ' + a.title;
+  $('eList').innerHTML = '<option value="">(none)</option>' + Object.keys(S.recipient_lists).map(k=>`<option>${esc(k)}</option>`).join('');
+  $('eExtra').value=''; $('ePrev').href = '/api/email/preview/' + id;
+  const t = new Date(Date.now()+36e5); t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); $('eAt').value = t.toISOString().slice(0,16);
+  $('emailDlg').showModal();
+}
+async function sendEmail(){ await act('/api/email',{id:curArt,list:$('eList').value,extra:$('eExtra').value,send_at:$('eAt').value}); $('emailDlg').close(); toast('Email scheduled'); }
+
+
+function editSeries(n, day){
+  const s = n ? S.series.find(x=>x.name===n) : null;
+  $('sHead').textContent = s ? 'Edit series' : 'New series';
+  $('sOrig').value = s ? s.name : '';
+  $('sName').value = s ? s.name : '';
+  $('sDay').value = s ? s.day_of_month : (day || 1);
+  $('sColor').value = s ? colorOf(s.name) : '#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');
+  $('sDesc').value = s ? (s.description||'').trim() : '';
+  $('sTags').value = s ? (s.hashtags||'') : '';
+  $('sTitleT').value = s ? (s.title_template||'') : '';
+  const chosen = s ? s.sites : [];
+  $('sSites').innerHTML = Object.entries(S.sites).map(([k,x]) =>
+    `<label><input type="checkbox" value="${esc(k)}" ${chosen.includes(k)?'checked':''}>${esc(x.label)}</label>`).join('');
+  $('sDel').style.display = s ? '' : 'none';
+  $('sDayNote').textContent = '';
+  $('serDlg').showModal();
+}
+$('sDay')?.addEventListener('input', () => { const d=+$('sDay').value; $('sDayNote').textContent = d>28 ? `In shorter months this posts on the last day of the month.` : ''; });
+async function saveSeriesDef(){
+  const sites = [...document.querySelectorAll('#sSites input:checked')].map(i=>i.value);
+  let r; try { r = await act('/api/series-def',{original_name:$('sOrig').value,name:$('sName').value,day_of_month:$('sDay').value,
+     sites,color:$('sColor').value,description:$('sDesc').value,hashtags:$('sTags').value,title_template:$('sTitleT').value}); } catch(e) { return; }
+  $('serDlg').close(); $('ser').value = r.name; showSeries(); toast('Series saved');
+}
+async function deleteSeries(){
+  const n = $('sOrig').value;
+  if (!confirm(`Delete the series "${n}"?\nIts queue and past posts are kept, so re-creating it with the same name brings them back.`)) return;
+  await act('/api/series-def/delete',{name:n}); $('serDlg').close(); showSeries(); toast('Series deleted');
+}
+
+load(); setInterval(() => { if (!document.querySelector('dialog[open]')) load(); }, 60000);
+</script></body></html>

@@ -1,0 +1,97 @@
+{
+  "process": {
+    "folder": "assets",
+    "prefix": "WITN",
+    "sequence_file": "sequence.json",
+    "save_narration": true,
+    "title_from_first_line": true,
+    "export_story_files": true,
+    "title_image": true
+  },
+  "tts_engine": "google",
+  "google_tts": {
+    "api_key": "YOUR_GOOGLE_TTS_API_KEY_HERE",
+    "api_key_env": "GOOGLE_TTS_API_KEY",
+    "voice_name": "en-US-Neural2-F",
+    "language_code": "en-US",
+    "audio_encoding": "MP3",
+    "speaking_rate": 1.0,
+    "max_chars_per_request": 4500
+  },
+  "piper": {
+    "executable": "C:/piper/piper.exe",
+    "model_path": "c:/piper/voices/en_US-lessac-medium.onnx",
+    "length_scale": 1.0
+  },
+  "kokoro": {
+  "voice": "bm_atten_inno",
+  "speed": 1.0,
+  "lang": "en-us",
+  "model_path": "C:/kokoro/kokoro-v1.0.onnx",
+  "voices_path": "C:/kokoro/voices-v1.0.bin",
+  "server_url": "http://10.120.1.147:8880"
+  },
+  "llm": {
+    "backend": "lmstudio",
+    "lmstudio": {
+      "host": "http://localhost:1234",
+      "model": "L3.2-Rogue-Creative-Instruct-Uncensored-Abliterated-7B-GGUF"
+    },
+    "ollama": {
+      "host": "http://localhost:11434",
+      "model": "llama3.2"
+    }
+  },
+  "image_prompt": {
+    "default_style": "vector art cartoon style, clean vector, flat colors, bold outlines, humorous",
+    "default_tone": "humorous"
+  },
+  "script_parsing": {
+    "tts_marker": "===TTS==="
+  },
+  "naming": {
+    "prefix": "EP",
+    "seq_digits": 3,
+    "separator": "-",
+    "max_title_words": 6
+  },
+  "audio": {
+    "loudnorm": true,
+    "output_dir": "output"
+  },
+  "video": {
+    "output_dir": "output",
+    "crossfade_seconds": 0.5,
+    "canvas": {
+      "width": null,
+      "height": null,
+      "fps": null
+    },
+    "tiktok": {
+      "width": 1080,
+      "height": 1920,
+      "fill_mode": "blur_pad"
+    },
+    "aesop": {
+      "pause_after_first_line_seconds": 2,
+      "edge_pad_seconds": 1,
+      "image_fit": "blur_pad",
+      "max_images": 3,
+      "image_fade_seconds": 1.0
+    },
+    "music": {
+      "volume": 0.25,
+      "fade_seconds": 1.0
+    }
+  },
+  "scheduler": {
+    "enabled": true,
+    "series": "WITN-YT",
+    "inbox": "../../content_scheduler/inbox",
+    "url": "http://127.0.0.1:5050"
+  },
+  "rewrite": {
+    "instructions": "Rewrite the following story in your own words as a lively script to be read aloud. Keep every fact, name and number. Keep it about the same length.",
+    "max_tokens": 1500
+  }
+}

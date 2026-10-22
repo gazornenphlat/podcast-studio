@@ -1,0 +1,45 @@
+{
+  "process": {
+    "prefix": "EP"
+  },
+  "tts_engine": "google",
+  "google_tts": {
+    "api_key": "YOUR_GOOGLE_TTS_API_KEY_HERE",
+    "api_key_env": "GOOGLE_TTS_API_KEY",
+    "voice_name": "en-US-Neural2-F",
+    "language_code": "en-US",
+    "audio_encoding": "MP3",
+    "speaking_rate": 1.0,
+    "max_chars_per_request": 4500
+  },
+  "piper": {
+    "executable": "C:/piper/piper.exe",
+    "model_path": "C:/piper/voices/en_US-lessac-medium.onnx",
+    "length_scale": 1.0
+  },
+  "llm": {
+    "backend": "ollama",
+    "ollama": {
+      "host": "http://localhost:11434",
+      "model": "llama3.2"
+    }
+  },
+  "image_prompt": {
+    "default_style": "vector art cartoon style, clean vector, flat colors, bold outlines, humorous",
+    "default_tone": "humorous"
+  },
+  "script_parsing": {
+    "tts_marker": "===TTS==="
+  },
+  "naming": {
+    "prefix": "EP",
+    "seq_digits": 3,
+    "separator": "-",
+    "max_title_words": 6
+  },
+  "audio": {
+    "sequence_file": "sequence.json",
+    "output_dir": "output",
+    "loudnorm": true
+  }
+}

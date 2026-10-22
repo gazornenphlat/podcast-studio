@@ -1,0 +1,75 @@
+{
+  "process": {
+    "folder": "assets",
+    "prefix": "CONFUSCIUS",
+    "sequence_file": "sequence.json"
+  },
+  "tts_engine": "google",
+  "google_tts": {
+    "api_key": "YOUR_GOOGLE_TTS_API_KEY_HERE",
+    "api_key_env": "GOOGLE_TTS_API_KEY",
+    "voice_name": "en-US-Neural2-F",
+    "language_code": "en-US",
+    "audio_encoding": "MP3",
+    "speaking_rate": 1.0,
+    "max_chars_per_request": 4500
+  },
+  "piper": {
+    "executable": "C:/piper/piper.exe",
+    "model_path": "C:/piper/voices/en_US-lessac-medium.onnx",
+    "length_scale": 1.0
+  },
+  "llm": {
+    "backend": "ollama",
+    "ollama": {
+      "host": "http://localhost:11434",
+      "model": "llama3.2"
+    }
+  },
+  "image_prompt": {
+    "default_style": "vector art cartoon style, clean vector, flat colors, bold outlines, humorous",
+    "default_tone": "humorous"
+  },
+  "script_parsing": {
+    "tts_marker": "===TTS==="
+  },
+  "naming": {
+    "prefix": "EP",
+    "seq_digits": 3,
+    "separator": "-",
+    "max_title_words": 6
+  },
+  "audio": {
+    "loudnorm": true,
+    "output_dir": "output"
+  },
+  "video": {
+    "output_dir": "output",
+    "crossfade_seconds": 0.5,
+    "canvas": {
+      "width": null,
+      "height": null,
+      "fps": null
+    },
+    "tiktok": {
+      "width": 1080,
+      "height": 1920,
+      "fill_mode": "blur_pad"
+    },
+    "cocku": {
+      "font_file": "C:/Windows/Fonts/arial.ttf",
+      "font_color": "white",
+      "font_size": 48,
+      "dim_opacity": 0.55,
+      "dim_fade_seconds": 0.4,
+      "pad_seconds": 1,
+      "chars_per_line": 45
+    }
+  },
+  "scheduler": {
+    "enabled": true,
+    "series": "Confuscius-YT",
+    "inbox": "../../content_scheduler/inbox",
+    "url": "http://127.0.0.1:5050"
+  }
+}

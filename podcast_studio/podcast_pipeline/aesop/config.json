@@ -1,0 +1,79 @@
+{
+  "process": {
+    "folder": "assets",
+    "prefix": "AESOP",
+    "sequence_file": "sequence.json",
+    "image_style": "in the style of a classic Aesop's Fables storybook illustration, vintage hand-painted children's book art, warm muted watercolor with fine ink linework, expressive anthropomorphic animals, gentle rustic pastoral setting, soft parchment tones, no text or lettering",
+    "image_tone": "charming, timeless fable-like"
+  },
+  "tts_engine": "google",
+  "google_tts": {
+    "api_key": "YOUR_GOOGLE_TTS_API_KEY_HERE",
+    "api_key_env": "GOOGLE_TTS_API_KEY",
+    "voice_name": "en-US-Neural2-F",
+    "language_code": "en-US",
+    "audio_encoding": "MP3",
+    "speaking_rate": 1.0,
+    "max_chars_per_request": 4500
+  },
+  "piper": {
+    "executable": "C:/piper/piper.exe",
+    "model_path": "C:/piper/voices/en_US-lessac-medium.onnx",
+    "length_scale": 1.0
+  },
+  "llm": {
+    "backend": "ollama",
+    "ollama": {
+      "host": "http://localhost:11434",
+      "model": "llama3.2"
+    }
+  },
+  "image_prompt": {
+    "default_style": "vector art cartoon style, clean vector, flat colors, bold outlines, humorous",
+    "default_tone": "humorous"
+  },
+  "script_parsing": {
+    "tts_marker": "===TTS==="
+  },
+  "naming": {
+    "prefix": "EP",
+    "seq_digits": 3,
+    "separator": "-",
+    "max_title_words": 6
+  },
+  "audio": {
+    "loudnorm": true,
+    "output_dir": "output"
+  },
+  "video": {
+    "output_dir": "output",
+    "crossfade_seconds": 0.5,
+    "canvas": {
+      "width": null,
+      "height": null,
+      "fps": null
+    },
+    "tiktok": {
+      "width": 1080,
+      "height": 1920,
+      "fill_mode": "blur_pad"
+    },
+    "aesop": {
+      "pause_after_first_line_seconds": 2,
+      "edge_pad_seconds": 1,
+      "image_fit": "blur_pad",
+      "max_images": 3,
+      "image_fade_seconds": 1.0
+    },
+    "music": {
+      "volume": 0.25,
+      "fade_seconds": 1.0
+    }
+  },
+  "scheduler": {
+    "enabled": true,
+    "series": "Aesop's Fables-YT",
+    "inbox": "../../content_scheduler/inbox",
+    "url": "http://127.0.0.1:5050"
+  }
+}

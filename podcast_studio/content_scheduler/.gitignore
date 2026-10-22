@@ -1,0 +1,9 @@
+secrets.yaml
+data.json
+data.json.tmp
+backups/
+google_token.json
+google_credentials.json
+__pycache__/
+tray.log
+inbox/
