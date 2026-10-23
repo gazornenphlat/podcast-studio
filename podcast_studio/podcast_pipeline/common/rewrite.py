@@ -13,6 +13,7 @@ script.txt (written here, used by the rest of the process):
 The title is the first line (no blank line after it), so it is read aloud
 first, then the pause, then the story.
 """
+import os
 import re
 import textwrap
 from pathlib import Path
@@ -72,8 +73,11 @@ def rewrite_script(script_in, script_out, config):
         title = _clean_title(generate_title(story, config))
         print(f"  Title: {title}")
         out.append({"title": title, "story": story})
-    Path(script_out).write_text(
+    _p = Path(script_out)
+    _tmp = _p.with_suffix(_p.suffix + ".tmp")
+    _tmp.write_text(
         "\n\n".join(f"{x['title']}\n{x['story']}" for x in out) + "\n", encoding="utf-8")
+    os.replace(_tmp, _p)
     print(f"\n📝 Rewritten script saved: {script_out}")
     return out
 
@@ -92,8 +96,11 @@ def rewrite_one(raw_text, config):
 
 def write_script(script_out, entries):
     """script.txt: title on the first line, story under it, blank line between stories."""
-    Path(script_out).write_text(
+    path = Path(script_out)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(
         "\n\n".join(f"{x['title']}\n{x['story']}" for x in entries) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _prompts_only(im):
@@ -116,7 +123,9 @@ def export_story_files(stories, prepared, config, output_dir):
         title, body = title.strip(), body.strip()
 
         txt = output_dir / f"{prep['stem']}.txt"
-        txt.write_text(f"{title}\n{body}\n", encoding="utf-8")
+        txt_tmp = txt.with_suffix(txt.suffix + ".tmp")
+        txt_tmp.write_text(f"{title}\n{body}\n", encoding="utf-8")
+        os.replace(txt_tmp, txt)
         print(f"📝 Story text saved: {txt}")
 
         if i or existing:

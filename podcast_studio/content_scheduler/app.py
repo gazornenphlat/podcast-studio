@@ -93,7 +93,7 @@ def log(d, msg):
     d["log"] = d["log"][:300]
 
 def sstate(d, name): return d["series"].setdefault(name, {})
-def series_cfg(name): return next(s for s in CFG.get("series", []) if s["name"] == name)
+def series_cfg(name): return next((s for s in CFG.get("series", []) if s["name"] == name), None)
 
 
 # ================= schedule math =================
@@ -304,6 +304,9 @@ def add_past(st, titles):
 
 def mark_posted(d, name, title=None):
     ser, st = series_cfg(name), sstate(d, name)
+    if ser is None:
+        log(d, f"Mark posted skipped: unknown series {name!r}")
+        return None
     q = st.setdefault("queue", [])
     if title is None:
         if not q: return None

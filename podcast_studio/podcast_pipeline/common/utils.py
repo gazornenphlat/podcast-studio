@@ -21,9 +21,18 @@ import requests
 # Config / sequencing
 # ---------------------------------------------------------------------------
 
+def _reject_duplicate_keys(pairs):
+    seen = set()
+    for key, _ in pairs:
+        if key in seen:
+            raise ValueError(f"Duplicate key in config: {key!r} (JSON keeps the last one silently)")
+        seen.add(key)
+    return dict(pairs)
+
+
 def load_config(config_path="config.json"):
     with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return json.load(f, object_pairs_hook=_reject_duplicate_keys)
 
 
 def get_next_sequence(sequence_file):

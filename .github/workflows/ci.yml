@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r podcast_studio/podcast_pipeline/requirements.txt
+          pip install -r podcast_studio/content_scheduler/requirements.txt
+      - name: Compile-check pipeline
+        run: python -m compileall -q podcast_studio/podcast_pipeline
+      - name: Compile-check scheduler
+        run: python -m compileall -q podcast_studio/content_scheduler social-scheduler
