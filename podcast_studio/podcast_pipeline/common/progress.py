@@ -59,15 +59,25 @@ class Progress:
                   "Add new stories, or run with --start-over to make them again.")
         return todo
 
-    def flag(self, story, name, value=None):
-        """Small per-story markers (e.g. already added to the Word file)."""
+    def has_flag(self, story, name):
+        """True if `name` is set for `story`."""
+        d = self.me.setdefault(name, [])
+        return story_key(story) in d
+
+    def mark_flag(self, story, name, value=True):
+        """Set (or clear) a per-story marker and persist it."""
         d = self.me.setdefault(name, [])
         k = story_key(story)
-        if value is None:
-            return k in d
         if value and k not in d:
             d.append(k); self.save()
         return value
+
+    def flag(self, story, name, value=None):
+        """Small per-story markers (e.g. already added to the Word file).
+        Prefer has_flag() / mark_flag()."""
+        if value is None:
+            return self.has_flag(story, name)
+        return self.mark_flag(story, name, value)
 
     # WITN: cache each rewrite so stopping (or quitting at the image pause)
     # never asks the LLM to rewrite the same story twice.

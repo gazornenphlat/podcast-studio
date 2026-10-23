@@ -55,8 +55,10 @@ def setup(script_file, description, add_args=None, need_video=True):
     config = copy.deepcopy(config)
     config["naming"]["prefix"] = proc["prefix"]
 
-    output_dir = Path(args.output_dir or config["video"]["output_dir"] if need_video
-                      else args.output_dir or config["audio"]["output_dir"])
+    if need_video:
+        output_dir = Path(args.output_dir or config["video"]["output_dir"])
+    else:
+        output_dir = Path(args.output_dir or config["audio"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
     intro = middle = outro = None

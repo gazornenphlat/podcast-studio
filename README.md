@@ -29,7 +29,7 @@ PODCAST_MAKER/
 │       ├── series.yaml         # optional; REPLACES the series list in config.yaml
 │       ├── tray.py, secrets.example.yaml
 │       └── service/            # OS service installers
-└── social-scheduler/           # separate, platform-focused scheduler
+└── social-scheduler/           # legacy/optional platform-focused scheduler (not wired to the pipeline)
 ```
 
 ## Requirements

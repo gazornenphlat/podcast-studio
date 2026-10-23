@@ -16,6 +16,8 @@ from pathlib import Path
 
 import requests
 
+DEFAULT_SAMPLE_RATE = 48000
+
 
 # ---------------------------------------------------------------------------
 # Config / sequencing
@@ -234,7 +236,9 @@ def _call_ollama(prompt, config, max_tokens=250):
     if config["llm"].get("backend", "ollama") == "lmstudio":
         return _call_lmstudio(prompt, config, max_tokens)
     llm = config["llm"]["ollama"]
-    host = llm.get("host", "http://localhost:11434")
+    host = llm.get("host", "http://localhost:11434").strip().rstrip("/")
+    if "://" not in host:
+        host = "http://" + host
     model = llm.get("model", "llama3.2")
     timeout = llm.get("timeout", 300)
 
@@ -538,8 +542,11 @@ def synthesize_narration(text, config, output_dir, base_name="_narration_tmp"):
 # ffmpeg / ffprobe wrappers
 # ---------------------------------------------------------------------------
 
-def run(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True)
+def run(cmd, timeout=None):
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Command timed out after {timeout}s: {' '.join(cmd)}") from e
     if result.returncode != 0:
         raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{result.stderr}")
     return result
@@ -647,7 +654,8 @@ def build_looped_video(middle_path, target_duration, out_path):
              "-c", "copy", looped_raw])
 
         run(["ffmpeg", "-y", "-i", looped_raw, "-t", f"{target_duration:.3f}",
-             "-c", "copy", str(out_path)])
+             "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+             "-c:a", "aac", "-b:a", "192k", str(out_path)])
 
     return out_path
 
@@ -1037,13 +1045,13 @@ def mix_music_bed(in_path, music_path, start, length, volume, fade_seconds, out_
     length = max(0.1, float(length))
     fade = max(0.0, min(float(fade_seconds), length / 2))
     delay_ms = int(round(max(0.0, start) * 1000))
-    chain = ("aformat=sample_rates=48000:channel_layouts=stereo,"
+    chain = (f"aformat=sample_rates={DEFAULT_SAMPLE_RATE}:channel_layouts=stereo,"
              f"atrim=0:{length:.3f},asetpts=PTS-STARTPTS")
     if fade > 0:
         chain += f",afade=t=in:st=0:d={fade:.3f},afade=t=out:st={length - fade:.3f}:d={fade:.3f}"
     chain += f",volume={float(volume):.3f},adelay={delay_ms}|{delay_ms}"
     fc = (f"[1:a]{chain}[m];"
-          "[0:a]aformat=sample_rates=48000:channel_layouts=stereo[b];"
+          f"[0:a]aformat=sample_rates={DEFAULT_SAMPLE_RATE}:channel_layouts=stereo[b];"
           "[b][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]")
     cmd = ["ffmpeg", "-y", "-i", str(in_path), "-stream_loop", "-1", "-i", str(music_path),
            "-filter_complex", fc]

@@ -18,6 +18,9 @@ LOCK = threading.RLock()          # guards every load-modify-save of data.json
 def p(*parts): return os.path.join(BASE, *parts)
 def new_id(): return uuid.uuid4().hex[:10]
 
+def api_token():
+    return os.environ.get("CONTENT_SCHEDULER_API_TOKEN") or CFG.get("app", {}).get("api_token")
+
 
 # ================= config / secrets =================
 def deep_merge(a, b):
@@ -162,9 +165,12 @@ def google_service(name, ver):
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
     g = CFG["google"]
-    scopes = ["https://www.googleapis.com/auth/tasks",
-              "https://www.googleapis.com/auth/calendar.events",
-              "https://www.googleapis.com/auth/youtube.upload"]
+    scopes = {"tasks": "https://www.googleapis.com/auth/tasks",
+              "calendar": "https://www.googleapis.com/auth/calendar.events",
+              "youtube": "https://www.googleapis.com/auth/youtube.upload"}.get(name)
+    scopes = [scopes] if scopes else ["https://www.googleapis.com/auth/tasks",
+                                     "https://www.googleapis.com/auth/calendar.events",
+                                     "https://www.googleapis.com/auth/youtube.upload"]
     tok = p(g["token_file"])
     creds = Credentials.from_authorized_user_file(tok, scopes) if os.path.exists(tok) else None
     if not creds or not creds.valid:
@@ -323,12 +329,12 @@ def mark_posted(d, name, title=None):
 
 
 # ================= podcast pipeline inbox =================
-def queue_dates(ser, st, d=None):
+def queue_dates(ser, st, d):
     """Posting date for each queued title, in order."""
     q = st.get("queue") or []
     if not q: return []
     today = now().date()
-    start = today + dt.timedelta(days=1) if (d or load_data())["fired"].get("daily") == today.isoformat() else today
+    start = today + dt.timedelta(days=1) if d["fired"].get("daily") == today.isoformat() else today
     return [x.isoformat() for x in posting_dates(ser, start, len(q))]
 
 def inbox_dir(): return p(CFG["app"].get("inbox_folder", "inbox"))
@@ -453,7 +459,10 @@ def email_check():
     with LOCK:
         d = load_data(); changed = False
         for job in d["emails"]:
-            if job["status"] == "pending" and dt.datetime.fromisoformat(job["send_at"]) <= now().replace(tzinfo=None):
+            send_at = dt.datetime.fromisoformat(job["send_at"])
+            if send_at.tzinfo is None:
+                send_at = send_at.replace(tzinfo=ZoneInfo(CFG["app"]["timezone"]))
+            if job["status"] == "pending" and send_at <= now():
                 try:
                     send_email(job["to"], job["subject"], job["body"], job.get("html"))
                     job["status"] = "sent"; log(d, f"Emailed article '{job['title']}' to {len(job['to'])} recipient(s)")
@@ -499,6 +508,15 @@ def state():
                     "log": d["log"][:40]})
 
 def body(): return request.get_json(silent=True) or {}
+
+@app.before_request
+def _check_api_token():
+    if not request.path.startswith("/api/"): return
+    token = api_token()
+    if not token: return
+    if (request.remote_addr or "") in ("127.0.0.1", "::1", "localhost"): return
+    if request.headers.get("X-API-Token") == token: return
+    return jsonify(error="unauthorized"), 401
 
 
 # ================= web: series / queue / past =================

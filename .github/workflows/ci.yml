@@ -23,3 +23,11 @@ jobs:
         run: python -m compileall -q podcast_studio/podcast_pipeline
       - name: Compile-check scheduler
         run: python -m compileall -q podcast_studio/content_scheduler social-scheduler
+      - name: Run pipeline smoke tests
+        run: |
+          cd podcast_studio/podcast_pipeline
+          python -m pytest tests/ -q
+      - name: Run scheduler smoke tests
+        run: |
+          cd podcast_studio/content_scheduler
+          python -m pytest tests/ -q

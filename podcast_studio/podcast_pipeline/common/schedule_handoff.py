@@ -61,8 +61,11 @@ def hand_off(config, title, video, tiktok=None, mp3=None, script=None, extra=Non
 
     url = (sch.get("url") or "").rstrip("/")
     if url:
+        headers = {}
+        if sch.get("token"):
+            headers["X-API-Token"] = sch["token"]
         try:
-            r = requests.post(f"{url}/api/inbox/ingest", timeout=10)
+            r = requests.post(f"{url}/api/inbox/ingest", timeout=10, headers=headers)
             for item in (r.json().get("scheduled") or []):
                 if item.get("title") == note["title"] and item.get("series") == series:
                     print(f"📅 Scheduled: {series} – {note['title']} → {item['date']}")

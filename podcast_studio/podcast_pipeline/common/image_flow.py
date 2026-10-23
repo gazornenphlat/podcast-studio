@@ -118,7 +118,7 @@ def find_title_image(proc):
             f = Path(proc["folder"]) / f"{name}{ext}"
             if f.exists():
                 return f
-    raise FileNotFoundError(f"process.title_image is on, but there is no middle.jpg in "
+    raise FileNotFoundError(f"process.title_image is on, but there is no middle.jpg/.jpeg/.png in "
                             f"{Path(proc['folder']).resolve()}. Add one, or set title_image to false.")
 
 
