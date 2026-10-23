@@ -68,6 +68,12 @@ python podcast_studio/content_scheduler/app.py     # or tray.py / "Content Sched
 - Scheduler: a `format: wide` site gets the 16:9 video, a `format: vertical` site gets `_tiktok.mp4`. Alt-ending videos are never scheduled. Scheduled processes always build the TikTok version.
 - Configs are JSON/YAML with no comments. Write files atomically (tmp + `os.replace`).
 
+## Screenshots
+
+Content Scheduler GUI (runs at `http://127.0.0.1:5050`):
+
+![Content Scheduler](docs/screenshots/scheduler.png)
+
 ## Secrets
 
 Copy `podcast_studio/content_scheduler/secrets.example.yaml` to `secrets.yaml` and `social-scheduler/.env.example` to `.env`, then fill in only the sites you use. Never commit these. See `.gitignore`.
