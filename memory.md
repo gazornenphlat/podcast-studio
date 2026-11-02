@@ -3,7 +3,23 @@
 A running record of what's been built, decided and found out. Newest first within each section.
 Add to it when something changes.
 
-## Current state (2026-10-22)
+## Current state (2026-11-02)
+
+**Test runs** (`--test`, or the Studio's "Test run" checkbox).
+- Nothing is recorded: `sequence.json`, scheduling, `progress.json` (done) and the Word file are all left alone.
+- Files go to `output/test/`. Numbers count up within the run only.
+- WITN rewrites are still cached, so a later real run reuses them.
+- Implemented by setting the env var `PODCAST_TEST_RUN=1`, which the shared helpers check.
+
+**Studio web interface** at `/studio`, part of the Content Scheduler app.
+- **Make tab:** series tiles, an autosaved script editor, options (TikTok, images, voice,
+  start over), and live run status. Each image prompt has a copy button and a drop zone;
+  uploads are converted to JPEG at the expected path. Continue / Stop here after each story.
+- **Queue tab:** shows each series' posting dates and queue.
+- **Design:** the owner's DESIGN.md, "Cream Watercolor Contemplative Mobile".
+- **Fonts and icons** come from Google Fonts and the Iconify CDN, so the page needs internet for them.
+- Tested end to end with a stand-in LLM and Kokoro: rewrite → images → build → scheduled.
+
 
 **Pipeline → scheduler hand-off**
 - Every video process (cocku, confuscius, witn, aesop) hands finished episodes to the
@@ -15,7 +31,7 @@ Add to it when something changes.
   - Wide: YouTube, Instagram, Facebook, X/Twitter, Rumble, Odysee, Spotify, Substack.
   - Vertical: TikTok, YouTube Shorts, Instagram Reels, Facebook Reels.
 - Only YouTube and YouTube Shorts can auto-upload (Google OAuth). The rest get a reminder
-  with the file path. Twitter and Instagram auto-post only send text and images, so they're left off for video.
+  with the file path. Twitter and Instagram are reminder-only for video episodes: the scheduler never auto-posts a video to them (`VIDEO_REMINDER_ONLY` in `app.py`).
 - All four series are set to all 12 sites in `config.yaml`. If `series.yaml` exists on the
   owner's machine, it overrides that list.
 - GUI: the series dropdown is sorted alphabetically. The calendar shows each series'
@@ -51,10 +67,10 @@ Add to it when something changes.
 
 - Windows, Python 3.14. The project is at `T:\sync\PODCAST_MAKER\podcast_studio\`.
 - Piper: `C:/piper/piper.exe`, voices in `C:/piper/voices/` (about 50, including custom ones).
-- Kokoro server: `http://10.120.1.147:8880`, voice `bm_atten_inno`.
+- Kokoro server: `http://10.120.1.147:8880`, voice `bm_atten_inno` (confirmed by the owner 2026-11-02).
   - That's not a stock Kokoro voice; whether the server has it was still unconfirmed (see below).
 - Wants changes delivered as small zips of the changed code files only, with config edits as snippets.
-- Declined direct shell access to their computer once (2026-10-17). Ask first.
+- Declined direct shell access to their computer once (2026-10-17). On 2026-11-02 said direct edits to the linked folder and pushes to GitHub are OK.
 
 ## Decisions and why
 
@@ -79,12 +95,16 @@ Add to it when something changes.
 - **`--script script-in.txt`** used to skip the rewrite and use the raw first sentence as the
   title (this produced the bad WITN-002). It now rewrites.
 - **Running Word file open in Word:** the save fails. The code stops with "close it in Word".
+- **Duplicate keys in config files were silent.** JSON and YAML keep the last value. Now JSON (pipeline, Studio) and YAML (scheduler) are refused with the file and key named. `tools/check_configs.py` finds them all.
+- **A `--test --start-over` run erased real progress** (and WITN's rewrite cache). Fixed 2026-11-02: test runs merge only the rewrite cache to disk.
+- **`import markers` before the `sys.path` line** broke cocku, confuscius and audio. Import it after the path is set.
+- **Studio crashed on an absolute image path** from a config with an absolute `output_dir`. Fixed.
+- **Aesop and WITN pause for images once per story**, not once per file. The READMEs said otherwise; fixed.
 - **Scheduler:** `series.yaml` overrides `config.yaml`'s series list, so new sites must be ticked in the GUI there.
 
 ## Open items
 
-- Confirm that the Kokoro server has `bm_atten_inno`. The run now prints the voice in use and validates it.
 - The scheduler isn't set to start with Windows yet. The owner asked about it on 2026-10-17
   but stopped the check. `content_scheduler/service/install_windows.ps1` exists for this.
-- COCKu, Confuscius and audio have only been checked to compile after the per-story change, not run end to end.
 - `rewrite.instructions` is still the generic placeholder. The WITN tone hasn't been set.
+- End-to-end runs with stand-ins (fake LLM, fake Kokoro, ffmpeg clips) are done for all five processes and the Studio API (2026-11-02). Not yet run with the real LLM, the real Kokoro server or real images.

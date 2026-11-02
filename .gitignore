@@ -1,37 +1,36 @@
-# Podcast Studio .gitignore
-# Tracks code, docs and config templates. Leaves out secrets,
-# generated episodes, per-machine state and large media.
+# ---------------------------------------------------------------
+#  Podcast Studio – .gitignore
+#  Tracks code, docs and config templates. Leaves out secrets,
+#  generated episodes, per-machine state and large media.
+# ---------------------------------------------------------------
 
 # --- Secrets -------------------------------------------------------
-podcast_studio/content_scheduler/secrets.yaml
-podcast_studio/content_scheduler/google_credentials.json
-podcast_studio/content_scheduler/google_token.json
-social-scheduler/.env
-social-scheduler/client_secret.json
-social-scheduler/youtube_token.json
+content_scheduler/secrets.yaml
+content_scheduler/google_credentials.json
+content_scheduler/google_token.json
 .env
 *.env
 
-# --- Generated episodes and run output -----------------------------
-podcast_studio/podcast_pipeline/*/output/
+# --- Generated episodes and run output ---------------------------
+podcast_pipeline/*/output/
 **/_*_tmp.*
 **/*_tmp.mp4
 **/*_tmp.mp3
 **/*_tmp.wav
 
-# --- Per-machine run state ----------------------------------------
-podcast_studio/podcast_pipeline/*/sequence.json
-podcast_studio/podcast_pipeline/*/progress.json
-podcast_studio/podcast_pipeline/*/progress.tmp
+# --- Per-machine run state ---------------------------------------
+podcast_pipeline/*/sequence.json
+podcast_pipeline/*/progress.json
+podcast_pipeline/*/progress.tmp
 
-# --- Working scripts (content, changes every run) -----------------
-podcast_studio/podcast_pipeline/**/script.txt
-podcast_studio/podcast_pipeline/**/script-in.txt
-podcast_studio/podcast_pipeline/**/script_tts.txt
+# --- Working scripts (content, changes every run) ---------------
+podcast_pipeline/**/script.txt
+podcast_pipeline/**/script-in.txt
+podcast_pipeline/**/script_tts.txt
 
-# --- Large media in assets/ (keep the README) ----------------------
-podcast_studio/podcast_pipeline/*/assets/*
-!podcast_studio/podcast_pipeline/*/assets/README.txt
+# --- Large media in assets/ (keep the README) -------------------
+podcast_pipeline/*/assets/*
+!podcast_pipeline/*/assets/README.txt
 *.mp4
 *.mov
 *.mkv
@@ -43,23 +42,19 @@ podcast_studio/podcast_pipeline/*/assets/*
 *.flac
 *.ogg
 
-# --- TTS / LLM models ---------------------------------------------
+# --- TTS / LLM models ----------------------------------------------
 *.onnx
 *.onnx.json
 *.bin
 voices/
 
 # --- Content Scheduler runtime ------------------------------------
-podcast_studio/content_scheduler/data.json
-podcast_studio/content_scheduler/data.json.tmp
-podcast_studio/content_scheduler/backups/
-podcast_studio/content_scheduler/inbox/
-podcast_studio/content_scheduler/tray.log
-podcast_studio/content_scheduler/series.yaml.tmp
-
-# --- Runtime data / scratch ----------------------------------------
-social-scheduler/queue.csv
-podcast_studio/podcast_pipeline/**/New Text Document.txt
+content_scheduler/data.json
+content_scheduler/data.json.tmp
+content_scheduler/backups/
+content_scheduler/inbox/
+content_scheduler/tray.log
+content_scheduler/series.yaml.tmp
 
 # --- Stray copies and backups -------------------------------------
 *-old
@@ -77,9 +72,6 @@ env/
 *.egg-info/
 .pytest_cache/
 
-# --- Sync tool metadata --------------------------------------------
-.sync/
-
 # --- Editors / OS --------------------------------------------------
 .vscode/
 .idea/
@@ -87,8 +79,3 @@ Thumbs.db
 desktop.ini
 .DS_Store
 ~$*.docx
-
-# --- Root-level binaries / large artifacts -------------------------
-*.apk
-*.xlsx
-*.zip

@@ -16,32 +16,58 @@ from pathlib import Path
 
 import requests
 
-DEFAULT_SAMPLE_RATE = 48000
-
 
 # ---------------------------------------------------------------------------
 # Config / sequencing
 # ---------------------------------------------------------------------------
 
 def _reject_duplicate_keys(pairs):
-    seen = set()
-    for key, _ in pairs:
+    """JSON silently keeps the LAST of two equal keys; refuse instead."""
+    seen = {}
+    for key, value in pairs:
         if key in seen:
-            raise ValueError(f"Duplicate key in config: {key!r} (JSON keeps the last one silently)")
-        seen.add(key)
-    return dict(pairs)
+            raise DuplicateKeyError(key)
+        seen[key] = value
+    return seen
+
+
+class DuplicateKeyError(ValueError):
+    pass
+
+
+def load_json_file(path):
+    """Read a JSON file, refusing duplicate keys with the file and key named."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f, object_pairs_hook=_reject_duplicate_keys)
+    except DuplicateKeyError as ex:
+        raise ValueError(f"Duplicate key {ex.args[0]!r} in {path} — JSON keeps only the last one, "
+                         "so the earlier value is silently ignored. Remove one of them.") from None
 
 
 def load_config(config_path="config.json"):
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f, object_pairs_hook=_reject_duplicate_keys)
+    return load_json_file(config_path)
+
+
+TEST_ENV = "PODCAST_TEST_RUN"
+_TEST_SEQ = {}
+
+
+def is_test():
+    """True during a --test run: nothing is counted, scheduled or recorded."""
+    return os.environ.get(TEST_ENV) == "1"
 
 
 def get_next_sequence(sequence_file):
-    """Read, increment, and persist a sequential counter. Starts at 1."""
+    """Read, increment, and persist a sequential counter. Starts at 1.
+    In a test run the number is used but sequence.json is left alone."""
+    if is_test():
+        key = str(Path(sequence_file).resolve())
+        _TEST_SEQ[key] = _TEST_SEQ.get(key, peek_next_sequence(sequence_file) - 1) + 1
+        return _TEST_SEQ[key]
     path = Path(sequence_file)
     if path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = load_json_file(path)
     else:
         data = {"seq": 0}
     data["seq"] += 1
@@ -51,14 +77,19 @@ def get_next_sequence(sequence_file):
 
 def peek_next_sequence(sequence_file):
     """The number get_next_sequence() would return next, without consuming it."""
+    if is_test() and str(Path(sequence_file).resolve()) in _TEST_SEQ:
+        return _TEST_SEQ[str(Path(sequence_file).resolve())] + 1
     path = Path(sequence_file)
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8")).get("seq", 0) + 1
+        return load_json_file(path).get("seq", 0) + 1
     return 1
 
 
 def set_sequence(sequence_file, value):
-    """Record `value` as the last-used sequence number."""
+    """Record `value` as the last-used sequence number (not in a test run)."""
+    if is_test():
+        _TEST_SEQ[str(Path(sequence_file).resolve())] = value
+        return
     Path(sequence_file).write_text(json.dumps({"seq": value}), encoding="utf-8")
 
 
@@ -654,8 +685,7 @@ def build_looped_video(middle_path, target_duration, out_path):
              "-c", "copy", looped_raw])
 
         run(["ffmpeg", "-y", "-i", looped_raw, "-t", f"{target_duration:.3f}",
-             "-c:v", "libx264", "-crf", "18", "-preset", "fast",
-             "-c:a", "aac", "-b:a", "192k", str(out_path)])
+             "-c", "copy", str(out_path)])
 
     return out_path
 
@@ -1045,13 +1075,13 @@ def mix_music_bed(in_path, music_path, start, length, volume, fade_seconds, out_
     length = max(0.1, float(length))
     fade = max(0.0, min(float(fade_seconds), length / 2))
     delay_ms = int(round(max(0.0, start) * 1000))
-    chain = (f"aformat=sample_rates={DEFAULT_SAMPLE_RATE}:channel_layouts=stereo,"
+    chain = ("aformat=sample_rates=48000:channel_layouts=stereo,"
              f"atrim=0:{length:.3f},asetpts=PTS-STARTPTS")
     if fade > 0:
         chain += f",afade=t=in:st=0:d={fade:.3f},afade=t=out:st={length - fade:.3f}:d={fade:.3f}"
     chain += f",volume={float(volume):.3f},adelay={delay_ms}|{delay_ms}"
     fc = (f"[1:a]{chain}[m];"
-          f"[0:a]aformat=sample_rates={DEFAULT_SAMPLE_RATE}:channel_layouts=stereo[b];"
+          "[0:a]aformat=sample_rates=48000:channel_layouts=stereo[b];"
           "[b][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]")
     cmd = ["ffmpeg", "-y", "-i", str(in_path), "-stream_loop", "-1", "-i", str(music_path),
            "-filter_complex", fc]

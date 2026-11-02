@@ -29,18 +29,42 @@ def deep_merge(a, b):
         else: a[k] = v
     return a
 
+class _StrictYAML(yaml.SafeLoader):
+    """PyYAML keeps the LAST of two equal keys without a word. This refuses instead."""
+
+
+def _mapping_no_duplicates(loader, node, deep=False):
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in seen:
+            raise yaml.constructor.ConstructorError(
+                None, None, f"duplicate key {key!r} (YAML keeps only the last one silently)", key_node.start_mark)
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+_StrictYAML.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping_no_duplicates)
+
+
+def load_yaml_file(path):
+    """Read a YAML file; a duplicate key is an error that names the file and key."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return yaml.load(f, Loader=_StrictYAML) or {}
+    except yaml.YAMLError as ex:
+        raise ValueError(f"{path}: {ex}") from None
+
+
 def load_config():
     global CFG
-    with open(p("config.yaml"), encoding="utf-8") as f:
-        c = yaml.safe_load(f) or {}
+    c = load_yaml_file(p("config.yaml"))
     sp = p(c.get("app", {}).get("secrets_file", "secrets.yaml"))
     if os.path.exists(sp):
-        with open(sp, encoding="utf-8") as f:
-            deep_merge(c, yaml.safe_load(f) or {})
+        deep_merge(c, load_yaml_file(sp))
     sf = p(c.get("app", {}).get("series_file", "series.yaml"))
     if os.path.exists(sf):                 # series managed in the GUI live here and replace config.yaml's list
-        with open(sf, encoding="utf-8") as f:
-            c["series"] = (yaml.safe_load(f) or {}).get("series", []) or []
+        c["series"] = load_yaml_file(sf).get("series", []) or []
     CFG = c
     return c
 
@@ -262,6 +286,10 @@ def media_file(site_key, m):
     vertical = CFG["sites"].get(site_key, {}).get("format") == "vertical"
     return m.get("tiktok") if vertical else m.get("video")
 
+# Sites whose API only sends text or images. A video episode always gets a reminder for these.
+VIDEO_REMINDER_ONLY = {"twitter", "instagram"}
+
+
 def auto_post(site_key, post, st, item=None):
     """Return True if posted. Video/image comes from the queued episode's media (sent by the
     podcast pipeline), falling back to the older st['next_post'] = {file, media_url}."""
@@ -274,6 +302,8 @@ def auto_post(site_key, post, st, item=None):
         if f and os.path.exists(f): extra["file"] = f
         else: extra.pop("file", None)
     title, text, api = post["title"], post["description"], s.get("api")
+    if api in VIDEO_REMINDER_ONLY and m:
+        return False                      # X and Instagram APIs can't carry the episode video: reminder only
     if api == "twitter":
         import tweepy
         tweepy.Client(consumer_key=s["api_key"], consumer_secret=s["api_secret"],
@@ -329,12 +359,12 @@ def mark_posted(d, name, title=None):
 
 
 # ================= podcast pipeline inbox =================
-def queue_dates(ser, st, d):
+def queue_dates(ser, st, d=None):
     """Posting date for each queued title, in order."""
     q = st.get("queue") or []
     if not q: return []
     today = now().date()
-    start = today + dt.timedelta(days=1) if d["fired"].get("daily") == today.isoformat() else today
+    start = today + dt.timedelta(days=1) if (d or load_data())["fired"].get("daily") == today.isoformat() else today
     return [x.isoformat() for x in posting_dates(ser, start, len(q))]
 
 def inbox_dir(): return p(CFG["app"].get("inbox_folder", "inbox"))
@@ -482,6 +512,11 @@ def loop():
 
 
 # ================= web: pages & state =================
+# ================= Studio (run the pipeline from the browser) =================
+from studio import bp as studio_bp
+app.register_blueprint(studio_bp)          # /studio
+
+
 @app.route("/")
 def index(): return render_template("index.html")
 

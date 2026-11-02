@@ -20,7 +20,7 @@
    `<episode>_1.jpg`, `_2.jpg`, `_3.jpg` (a single-image story is just `<episode>.jpg`).
    Enter continues, `q` quits, and it re-prompts while any are missing. If some are
    missing but there are exactly as many other `.jpg` files with that episode's number,
-   they are renamed in filename order. One pause covers every story in the file.
+   they are renamed in filename order. Each story pauses for its own images, in turn, so you can stop after any story.
 3. **Build**, all crossfaded: intro -> middle video (once, normal speed, no script) ->
    your images while the script is read -> outro.
    - Image 1 is on screen from the start: the first line, the pause, then the first part.

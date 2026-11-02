@@ -10,6 +10,7 @@ its own script, config, assets, counter and output).
      the story segment (not the intro/outro), at video.music.volume.
 """
 
+import markers as M
 import copy
 from pathlib import Path
 
@@ -93,7 +94,7 @@ def process_story(story, args, config, proc, output_dir, intro, middle, outro, p
     if middle_ready is not middle:
         middle_ready.unlink(missing_ok=True)
 
-    print(f"\n✅ Done: {final_path}")
+    print(f"\n{M.DONE} {final_path}")
     if args.tiktok:
         tk = output_dir / f"{final_path.stem}_tiktok.mp4"
         tiktok_export(final_path, tk, config)
@@ -118,7 +119,7 @@ def find_title_image(proc):
             f = Path(proc["folder"]) / f"{name}{ext}"
             if f.exists():
                 return f
-    raise FileNotFoundError(f"process.title_image is on, but there is no middle.jpg/.jpeg/.png in "
+    raise FileNotFoundError(f"process.title_image is on, but there is no middle.jpg in "
                             f"{Path(proc['folder']).resolve()}. Add one, or set title_image to false.")
 
 
@@ -202,7 +203,7 @@ def process_story_title_card(story, args, config, proc, output_dir, intro, outro
         print(f"🗣️ Narration-only file saved: {nsave}")
     narration.unlink(missing_ok=True)
 
-    print(f"\n✅ Done: {final_path}")
+    print(f"\n{M.DONE} {final_path}")
     if args.tiktok:
         tk = output_dir / f"{final_path.stem}_tiktok.mp4"
         tiktok_export(final_path, tk, config)
@@ -244,7 +245,7 @@ def run(script_file, description, rewrite_in=None):
     todo = prog.pending(stories)
 
     for n, (i, raw) in enumerate(todo):
-        print(f"\n=== Story {i}/{len(stories)} ===")
+        print(f"\n{M.STORY_HEADER} {i}/{len(stories)} ===")
         story = raw
         if rewrite_in:
             done = prog.get_rewrite(raw)

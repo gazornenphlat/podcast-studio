@@ -114,6 +114,7 @@ def export_story_files(stories, prepared, config, output_dir):
     from docx import Document
 
     output_dir = Path(output_dir)
+    test = os.environ.get("PODCAST_TEST_RUN") == "1"
     name = config.get("process", {}).get("stories_docx") or f"{config['naming']['prefix']}_Stories.docx"
     path = output_dir / name
     existing = path.exists()
@@ -147,6 +148,9 @@ def export_story_files(stories, prepared, config, output_dir):
                 if line.strip():
                     doc.add_paragraph(line.strip())
 
+    if test:
+        print("🧪 Test run — not added to the Word document.")
+        return None
     try:
         doc.save(path)
     except PermissionError:

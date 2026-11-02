@@ -1,84 +1,68 @@
 # Podcast Studio
 
-Two Python apps that work together:
-
-- **`podcast_studio/podcast_pipeline/`** — turns script text into finished podcast episodes: local-LLM title + image prompts, TTS narration (Google / Piper / Kokoro), and ffmpeg video (intro → middle → outro, plus a vertical TikTok export). Each series is its own process (`witn`, `aesop`, `cocku`, `confuscius`, `audio`).
-- **`podcast_studio/content_scheduler/`** — Flask + system-tray app. Holds a queue per series, works out posting dates, sends reminders, and auto-posts where an API allows (YouTube / YouTube Shorts). Finished video episodes are handed off from the pipeline via `common/schedule_handoff.py` into `content_scheduler/inbox/`.
-
-## Layout
+The podcast pipeline and the Content Scheduler, joined up: when a video episode
+finishes, it is queued in the scheduler automatically and given the next open
+posting day for its series.
 
 ```
-PODCAST_MAKER/
-├── memory.md, CLAUDE.md        # project notes / agent guidance
-├── podcast_studio/
-│   ├── podcast_pipeline/
-│   │   ├── common/             # shared code (edit here, not in copies)
-│   │   │   ├── utils.py        # config, naming, LLM (Ollama/LM Studio), TTS, ffmpeg
-│   │   │   ├── steps.py        # setup() + argparse, image-prompt prep, image pause
-│   │   │   ├── image_flow.py   # WITN + Aesop engine
-│   │   │   ├── rewrite.py      # WITN rewrite of script-in.txt, per-story .txt, Word file
-│   │   │   ├── progress.py     # per-story resume (progress.json)
-│   │   │   └── schedule_handoff.py
-│   │   ├── witn/ aesop/ cocku/ confuscius/ audio/
-│   │   │   └── <name>.py, config.json, assets/, sequence.json, progress.json, output/
-│   │   └── tools/list_voices.py
-│   └── content_scheduler/
-│       ├── app.py              # all server logic
-│       ├── templates/index.html # whole GUI
-│       ├── config.yaml         # sites, series, reminders
-│       ├── series.yaml         # optional; REPLACES the series list in config.yaml
-│       ├── tray.py, secrets.example.yaml
-│       └── service/            # OS service installers
-└── social-scheduler/           # legacy/optional platform-focused scheduler (not wired to the pipeline)
+podcast_studio/
+  podcast_pipeline/    makes the episodes (unchanged usage)
+  content_scheduler/   schedules / reminds / auto-posts (unchanged usage)
+    inbox/             finished episodes land here (created automatically)
 ```
 
-## Requirements
+Keep the two folders side by side like this. The pipeline finds the inbox at
+`../../content_scheduler/inbox`, relative to each process folder.
 
-- Python 3.14 (Windows-focused; Linux/macOS installers also provided for the scheduler service)
-- `ffmpeg` on PATH
-- For LLM: Ollama (`localhost:11434`) or LM Studio (`llm.backend: lmstudio`, port 1234)
-- For TTS: Google (network), Piper (`C:/piper/piper.exe`), or Kokoro (server or `kokoro-onnx`)
-- See `podcast_studio/podcast_pipeline/requirements.txt` and `podcast_studio/content_scheduler/requirements.txt`
+## Studio (web interface)
 
-## Quick start
+Start the Content Scheduler as usual, then open **http://127.0.0.1:5050/studio**.
+- **Make:** pick a series, write or paste its stories (autosaved to its script file), choose
+  TikTok, number of images and voice, then Start. Image prompts appear with a Copy button and
+  a drop zone. Drop each image in, press play, and choose Continue or Stop here after each story.
+- **Queue:** shows each series' next posting days and its queue.
 
-Pipeline (run from a process folder or pass paths):
+Runs are the normal process scripts, so everything works exactly as from the terminal:
+resume, scheduling and the Word file. The page has no login. Keep `app.host` at 127.0.0.1
+unless you trust everyone on your network, because the page can start runs.
 
-```bash
-python podcast_studio/podcast_pipeline/witn/witn.py            # rewrites script-in.txt, then builds
-python podcast_studio/podcast_pipeline/witn/witn.py --script witn/script.txt
-python podcast_studio/podcast_pipeline/cocku/cocku.py --script script.txt --tiktok
-```
+## How it works
 
-Common flags: `--tts-engine google|piper|kokoro`, `--start-over`, `--images 1-3`, `--config`.
+1. Run a video process as usual, e.g. `python podcast_pipeline/cocku/cocku.py --script script.txt`.
+2. When each episode is done, the pipeline drops a note into `content_scheduler/inbox/`
+   with the title and the full paths of the .mp4 (plus the TikTok, .mp3 and script if made).
+3. The scheduler adds the episode to the end of that series' queue with the video attached.
+   That gives it the next open posting day. Then it sends you a "📅 Scheduled" notification.
+   If the scheduler is running, this happens right away and the pipeline prints the date.
+   If not, it happens as soon as you start the scheduler.
+4. In the GUI, each queued episode shows its posting date, and 🎬 means a video file is attached.
+5. On the posting day:
+   - YouTube `auto_post: true` → the video is uploaded automatically (as `privacy_status`, default private).
+   - `auto_post: false` (the default) → you get the usual reminder, now with the exact file path to upload.
 
-Scheduler:
+## Which video goes where
 
-```bash
-python podcast_studio/content_scheduler/app.py     # or tray.py / "Content Scheduler.pyw"
-```
+Each site in `content_scheduler/config.yaml` has `format: wide` or `format: vertical`.
 
-## Conventions
+- **16:9 episode video:** YouTube, Instagram, Facebook, X / Twitter, Rumble, Odysee, Spotify, Substack
+- **9:16 TikTok version:** TikTok, YouTube Shorts, Instagram Reels, Facebook Reels
+- **Alt-ending videos** are never scheduled.
 
-- Each process folder is self-contained; `setup()` chdirs into it, so relative paths in `config.json` are relative to that folder. Use absolute paths for Piper/Kokoro/fonts.
-- Shared behaviour lives in `common/`, switched per process via `config.json` flags (`process.title_image`, `process.export_story_files`, `process.title_from_first_line`).
-- Scripts: stories separated by a blank line; a story contains no blank lines. Optional `===TTS===` splits display text from TTS text. WITN's `script.txt` has the title on the first line, then the story.
-- Naming: `{PREFIX}-{SEQ:03}_{Title-Slug}.ext`; sequence number comes from `sequence.json`.
-- Stories run one at a time with a "Continue?" prompt; progress keyed by story-text hash in `progress.json`.
-- Scheduler: a `format: wide` site gets the 16:9 video, a `format: vertical` site gets `_tiktok.mp4`. Alt-ending videos are never scheduled. Scheduled processes always build the TikTok version.
-- Configs are JSON/YAML with no comments. Write files atomically (tmp + `os.replace`).
+Scheduled processes always make the 9:16 version, as if `--tiktok` was given.
+All four series post to all twelve sites. Untick any in the series' **Edit** dialog.
 
-## Screenshots
+| Process | Scheduler series |
+|---|---|
+| cocku | COCKu-YT |
+| confuscius | Confuscius-YT |
+| witn | WITN-YT |
+| aesop | Aesop's Fables-YT |
 
-Content Scheduler GUI (runs at `http://127.0.0.1:5050`):
+Change these in each process's `config.json → scheduler`. Set `"enabled": false`
+there to stop a process from scheduling. If you rename a series in the scheduler,
+update `scheduler.series` too. Notes the scheduler can't match go to
+`inbox/failed/` and are listed in the scheduler log. Audio-only episodes are not
+scheduled.
 
-![Content Scheduler](docs/screenshots/scheduler.png)
-
-## Secrets
-
-Copy `podcast_studio/content_scheduler/secrets.example.yaml` to `secrets.yaml` and `social-scheduler/.env.example` to `.env`, then fill in only the sites you use. Never commit these. See `.gitignore`.
-
-## Notes
-
-- Owner environment is Windows, Python 3.14, network share at `T:\sync\PODCAST_MAKER\podcast_studio\`. Earlier copies lived under `Downloads\PODCAST_MAKER\`, so check which copy a traceback comes from.
-- See `memory.md` for history, decisions, gotchas and open items.
+Removing or renaming a queued episode in the GUI keeps its video attached
+correctly. Marking it posted clears the attachment.
