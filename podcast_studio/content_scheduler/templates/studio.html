@@ -283,7 +283,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const ICONS = {witn:'hugeicons:news', aesop:'hugeicons:book-open-01', cocku:'hugeicons:quill-write-01', confuscius:'hugeicons:bubble-chat', audio:'hugeicons:headphones'};
 const HUES = ['var(--primary)','var(--secondary)','var(--accent)'];
 let P = [], cur = null, job = null, since = 0, jstate = null, timer = null, dirty = false, saveT = null;
-let opts = {tiktok:true, images:null, tts:null, start_over:false, test:false};
+let opts = {tiktok:true, images:null, tts:null, start_over:false, test:false, image_worker:'auto'};
 try{ opts.test = localStorage.getItem('studio.test')==='1'; }catch(e){}
 const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 
@@ -332,6 +332,8 @@ function drawChips(p){
   const g = [];
   if (p.key !== 'audio') g.push(chip('tiktok', opts.tiktok, 'hugeicons:smart-phone-01', 'TikTok'));
   if (p.images) g.push([1,2,3].map(n => chip('img'+n, (opts.images||3)===n, n===1?'hugeicons:image-01':'hugeicons:image-02', n+(n>1?' imgs':' img'))).join(''));
+  if (p.images && p.image_gen) g.push(['auto', ...(p.image_workers||[])].map((w,i) =>
+    chip('iw-'+i, (opts.image_worker||'auto')===w, 'hugeicons:cpu', w==='auto'?'Any worker':w)).join(''));
   g.push([['google','hugeicons:google'],['piper','hugeicons:voice'],['kokoro','hugeicons:mic-02']].map(([e,ic]) =>
     chip('tts-'+e, (opts.tts||p.tts)===e, ic, e)).join(''));
   $('chips').innerHTML = g.map(x => `<div class="group">${x}</div>`).join('');
@@ -345,6 +347,7 @@ function toggle(id){
   if (id==='tiktok') opts.tiktok = !opts.tiktok;
   else if (id.startsWith('img')) opts.images = +id.slice(3);
   else if (id.startsWith('tts-')) opts.tts = id.slice(4);
+  else if (id.startsWith('iw-')) { const i = +id.slice(3); opts.image_worker = i===0 ? 'auto' : (p.image_workers||[])[i-1]; }
   else if (id==='over') opts.start_over = !opts.start_over;
   else if (id==='test') { opts.test = !opts.test; store.set('studio.test', opts.test?'1':''); }
   drawChips(p);
@@ -367,7 +370,7 @@ async function start(){
   if (!$('script').value.trim()) { toast('Add at least one story first'); return; }
   $('startBtn').disabled = true;
   try {
-    const j = await api('/api/studio/run', {process:cur, tiktok:opts.tiktok, images:opts.images, tts:opts.tts, start_over:opts.start_over, test:opts.test});
+    const j = await api('/api/studio/run', {process:cur, tiktok:opts.tiktok, images:opts.images, tts:opts.tts, image_worker:opts.image_worker, start_over:opts.start_over, test:opts.test});
     opts.start_over = false; drawChips(p);
     attach(j.job); toast('Started');
   } catch(e){ toast(e.message); }

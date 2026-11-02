@@ -37,6 +37,8 @@ def setup(script_file, description, add_args=None, need_video=True):
     p.add_argument("--test", action="store_true",
                    help="Test run: sequence.json, scheduling, progress and the Word file are left "
                         "alone; files go to output/test/")
+    p.add_argument("--image-worker", default=None,
+                   help="ComfyUI worker to make the images on (a name from image_gen.workers, or auto)")
     p.add_argument("--start-over", action="store_true",
                    help="Forget which stories of this script are done and start from the first")
     if add_args:
@@ -58,6 +60,8 @@ def setup(script_file, description, add_args=None, need_video=True):
     proc = config["process"]
     config = copy.deepcopy(config)
     config["naming"]["prefix"] = proc["prefix"]
+    if args.image_worker:
+        config.setdefault("image_gen", {})["worker"] = args.image_worker
 
     output_dir = Path(args.output_dir or config["video"]["output_dir"] if need_video
                       else args.output_dir or config["audio"]["output_dir"])
@@ -257,7 +261,12 @@ def locate_images(prep, config, output_dir):
 
 
 def wait_for_images(prepared, config, output_dir):
-    """Pause until every story's images are all in place."""
+    """Make what ComfyUI can, then pause until every image is in place."""
+    import imagegen
+    imagegen.generate_missing(prepared, config, output_dir)
+    if not [m for p in prepared for m in locate_images(p, config, output_dir)]:
+        print("✓ All images ready — continuing.")
+        return
     total = sum(len(p["images"]) for p in prepared)
     plural = "s" if total > 1 else ""
     while True:
