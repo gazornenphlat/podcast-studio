@@ -63,6 +63,12 @@ Add to it when something changes.
 **LLM:** `llm.backend` is `ollama` (default) or `lmstudio` (OpenAI-compatible, port 1234).
 `<think>` blocks are stripped from the output.
 
+## Machines (owner, 2026-11-02)
+
+- Pipeline runs on the Radeon 780M machine (32 GB; 4 GB given to the GPU, rest is system RAM).
+- Also: Ryzen 9 6900HX with Radeon 680M (32 GB), Ryzen 7 PRO 5850U with Vega 8 (32 GB).
+- Image generation: ComfyUI (ZLUDA build). The 5850U's Vega iGPU is not on the supported list, so it is not an image worker.
+
 ## Owner setup and preferences
 
 - Windows, Python 3.14. The project is at `T:\sync\PODCAST_MAKER\podcast_studio\`.
