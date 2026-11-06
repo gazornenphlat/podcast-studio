@@ -83,7 +83,7 @@ def main():
                         help="Test run: sequence.json and progress are left alone; files go to output/test/")
     parser.add_argument("--start-over", action="store_true",
                         help="Forget which stories of this script are done and start from the first")
-    parser.add_argument("--tts-engine", choices=["google", "piper", "kokoro"], default=None,
+    parser.add_argument("--tts-engine", choices=["google", "piper", "kokoro", "voicestudio"], default=None,
                          help="Override config's tts_engine for this run")
     parser.add_argument("--tts-marker", default=None,
                          help="Override config's script_parsing.tts_marker for this run")

@@ -548,9 +548,46 @@ def kokoro_tts(text, config, out_path):
     return out_path
 
 
+def voicestudio_tts(text, config, out_path):
+    """VoiceStudio (the desktop/backend app, default http://127.0.0.1:3900) through its
+    OpenAI-compatible POST /v1/audio/speech. Set voicestudio.server_url, and voice to a
+    voice-profile name or id from VoiceStudio (see GET /v1/audio/voices).
+    Loopback needs no key; for a remote server set voicestudio.api_key (sent as Bearer)."""
+    v = config.get("voicestudio", {})
+    base = (v.get("server_url") or "http://127.0.0.1:3900").strip().rstrip("/")
+    if "://" not in base:
+        base = "http://" + base
+    headers = {}
+    key = v.get("api_key") or os.environ.get(v.get("api_key_env", "VOICESTUDIO_API_KEY"))
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    payload = {
+        "model": v.get("model", "omnivoice"),
+        "input": text,
+        "voice": v.get("voice", "default"),
+        "speed": float(v.get("speed", 1.0)),
+        "response_format": "wav",
+    }
+    if v.get("language"):
+        payload["language"] = v["language"]
+    if v.get("instructions"):
+        payload["instructions"] = v["instructions"]
+    try:
+        resp = requests.post(base + "/v1/audio/speech", json=payload, headers=headers,
+                             timeout=int(v.get("timeout", 900)))
+    except requests.exceptions.ConnectionError as e:
+        raise RuntimeError(
+            f"Couldn't reach VoiceStudio at {base}. Start the VoiceStudio app (or backend) "
+            "and check voicestudio.server_url in config.json.") from e
+    if not resp.ok:
+        raise RuntimeError(f"VoiceStudio error ({resp.status_code}) at {base}: {resp.text[:300]}")
+    Path(out_path).write_bytes(resp.content)
+    return out_path
+
+
 def synthesize_narration(text, config, output_dir, base_name="_narration_tmp"):
     """Dispatches to the configured TTS engine (config['tts_engine']:
-    'google', 'piper' or 'kokoro') and returns the path to the resulting audio file."""
+    'google', 'piper', 'kokoro' or 'voicestudio') and returns the path to the resulting audio file."""
     engine = config.get("tts_engine", "google")
     output_dir = Path(output_dir)
 
@@ -563,8 +600,11 @@ def synthesize_narration(text, config, output_dir, base_name="_narration_tmp"):
     elif engine == "kokoro":
         out_path = output_dir / f"{base_name}.wav"
         kokoro_tts(text, config, out_path)
+    elif engine == "voicestudio":
+        out_path = output_dir / f"{base_name}.wav"
+        voicestudio_tts(text, config, out_path)
     else:
-        raise ValueError(f"Unknown tts_engine '{engine}' — use 'google', 'piper' or 'kokoro'.")
+        raise ValueError(f"Unknown tts_engine '{engine}' — use 'google', 'piper', 'kokoro' or 'voicestudio'.")
 
     return out_path
 

@@ -32,7 +32,7 @@ def setup(script_file, description, add_args=None, need_video=True):
         p.add_argument("--tiktok", action="store_true", help="Also export a TikTok (9:16) version")
     p.add_argument("--config", default=None, help="Config file (default: config.json next to this script)")
     p.add_argument("--output-dir", default=None, help="Override output directory")
-    p.add_argument("--tts-engine", choices=["google", "piper", "kokoro"], default=None)
+    p.add_argument("--tts-engine", choices=["google", "piper", "kokoro", "voicestudio"], default=None)
     p.add_argument("--tts-marker", default=None)
     p.add_argument("--test", action="store_true",
                    help="Test run: sequence.json, scheduling, progress and the Word file are left "
