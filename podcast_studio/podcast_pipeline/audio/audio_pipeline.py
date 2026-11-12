@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
 
+import markers as M
 from steps import save_script
 from utils import (
     load_config, get_next_sequence, build_filename, parse_script_file,
@@ -67,7 +68,7 @@ def process_story(story, args, config, output_dir):
     prompt_path = output_dir / f"{final_path.stem}_image_prompt.txt"
     prompt_path.write_text(image_prompt, encoding="utf-8")
 
-    print(f"\n✅ Done: {final_path}")
+    print(f"\n{M.DONE} {final_path}")
     print(f"🎨 Image prompt saved to: {prompt_path}")
 
 
@@ -78,9 +79,11 @@ def main():
     parser.add_argument("--outro", required=True, help="Path to the outro audio file")
     parser.add_argument("--config", default=None, help="Config file (default: config.json next to this script)")
     parser.add_argument("--output-dir", default=None, help="Override output directory")
+    parser.add_argument("--test", action="store_true",
+                        help="Test run: sequence.json and progress are left alone; files go to output/test/")
     parser.add_argument("--start-over", action="store_true",
                         help="Forget which stories of this script are done and start from the first")
-    parser.add_argument("--tts-engine", choices=["google", "piper", "kokoro"], default=None,
+    parser.add_argument("--tts-engine", choices=["google", "piper", "kokoro", "voicestudio"], default=None,
                          help="Override config's tts_engine for this run")
     parser.add_argument("--tts-marker", default=None,
                          help="Override config's script_parsing.tts_marker for this run")
@@ -96,6 +99,10 @@ def main():
         config["tts_engine"] = args.tts_engine
 
     output_dir = Path(args.output_dir or config["audio"]["output_dir"])
+    if args.test:
+        os.environ["PODCAST_TEST_RUN"] = "1"
+        output_dir = output_dir / "test"
+        print(f"🧪 TEST RUN — numbering and progress are left alone; files go to {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tts_marker = args.tts_marker or config.get("script_parsing", {}).get("tts_marker", "===TTS===")
@@ -107,7 +114,7 @@ def main():
     prog = Progress(args.script, args.start_over)
     todo = prog.pending(stories)
     for n, (idx, story) in enumerate(todo):
-        print(f"\n=== Story {idx}/{len(stories)} ===")
+        print(f"\n{M.STORY_HEADER} {idx}/{len(stories)} ===")
         process_story(story, args, config, output_dir)
         prog.mark_done(story)
         left = len(todo) - n - 1

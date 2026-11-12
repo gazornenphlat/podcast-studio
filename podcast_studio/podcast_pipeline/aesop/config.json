@@ -21,6 +21,14 @@
     "model_path": "C:/piper/voices/en_US-lessac-medium.onnx",
     "length_scale": 1.0
   },
+  "kokoro": {
+    "voice": "af_heart",
+    "speed": 1.0,
+    "lang": "en-us",
+    "model_path": "C:/kokoro/kokoro-v1.0.onnx",
+    "voices_path": "C:/kokoro/voices-v1.0.bin",
+    "server_url": ""
+  },
   "llm": {
     "backend": "ollama",
     "ollama": {

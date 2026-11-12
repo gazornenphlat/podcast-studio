@@ -3,6 +3,7 @@ confuscius/, aesop/, audio/). Each process has its own script, config.json,
 assets/ folder, sequence.json and output/ folder; this module only holds
 the plumbing they have in common."""
 
+import markers as M
 import argparse
 import copy
 import os
@@ -31,8 +32,11 @@ def setup(script_file, description, add_args=None, need_video=True):
         p.add_argument("--tiktok", action="store_true", help="Also export a TikTok (9:16) version")
     p.add_argument("--config", default=None, help="Config file (default: config.json next to this script)")
     p.add_argument("--output-dir", default=None, help="Override output directory")
-    p.add_argument("--tts-engine", choices=["google", "piper", "kokoro"], default=None)
+    p.add_argument("--tts-engine", choices=["google", "piper", "kokoro", "voicestudio"], default=None)
     p.add_argument("--tts-marker", default=None)
+    p.add_argument("--test", action="store_true",
+                   help="Test run: sequence.json, scheduling, progress and the Word file are left "
+                        "alone; files go to output/test/")
     p.add_argument("--start-over", action="store_true",
                    help="Forget which stories of this script are done and start from the first")
     if add_args:
@@ -55,10 +59,13 @@ def setup(script_file, description, add_args=None, need_video=True):
     config = copy.deepcopy(config)
     config["naming"]["prefix"] = proc["prefix"]
 
-    if need_video:
-        output_dir = Path(args.output_dir or config["video"]["output_dir"])
-    else:
-        output_dir = Path(args.output_dir or config["audio"]["output_dir"])
+    output_dir = Path(args.output_dir or config["video"]["output_dir"] if need_video
+                      else args.output_dir or config["audio"]["output_dir"])
+    if args.test:
+        os.environ["PODCAST_TEST_RUN"] = "1"
+        output_dir = output_dir / "test"
+        print("🧪 TEST RUN — numbering, scheduling, progress and the Word file are left alone; "
+              f"files go to {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     intro = middle = outro = None
@@ -212,11 +219,11 @@ def prepare_aesop_batch(stories, config, proc, output_dir, intro, max_images=Non
         for im in prep["images"]:
             which = f" — image {im['n']} of {n}" if n > 1 else ""
             print(f"\n{bar}")
-            print(f"🎨 IMAGE NEEDED — story {i}/{len(prepared)}: {prep['title']}{which}")
+            print(f"{M.IMAGE_NEEDED}story {i}/{len(prepared)}: {prep['title']}{which}")
             print("-" * 72)
             print(im["prompt"])
             print("-" * 72)
-            print("Save your image as:")
+            print(M.SAVE_AS)
             print(f"    {im['path']}")
         print(f"(Prompts also saved to: {prep['prompt_path']})")
     print(f"\n{bar}")
@@ -250,13 +257,16 @@ def locate_images(prep, config, output_dir):
 
 
 def wait_for_images(prepared, config, output_dir):
-    """Pause until every story's images are all in place."""
+    """Pause until every image is in place."""
+    if not [m for p in prepared for m in locate_images(p, config, output_dir)]:
+        print("✓ All images ready — continuing.")
+        return
     total = sum(len(p["images"]) for p in prepared)
     plural = "s" if total > 1 else ""
     while True:
         try:
-            answer = input(f"\nCreate the image{plural} and save {'them' if plural else 'it'} "
-                           "as shown above, then press Enter to continue (or q to quit): ")
+            answer = input(f"\n{M.CREATE_PROMPT}{plural} and save {'them' if plural else 'it'} "
+                           f"as shown above, then {M.PROMPT_IMAGES}: ")
         except EOFError:
             raise SystemExit("Aesop mode pauses for you to create the images, so it needs "
                              "an interactive terminal.")
@@ -268,6 +278,6 @@ def wait_for_images(prepared, config, output_dir):
         if not missing:
             print("✓ All images found — continuing.")
             return
-        print("\n⚠️  Still missing:")
+        print(f"\n⚠️  {M.STILL_MISSING}")
         for m in missing:
             print(f"    {m}")

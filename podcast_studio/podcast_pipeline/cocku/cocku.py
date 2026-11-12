@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
 
+import markers as M
 from schedule_handoff import hand_off
 from steps import setup, tts_marker, build_companion_audio, save_image_prompt, save_script
 from utils import (
@@ -71,7 +72,7 @@ def process_story(story, args, config, proc, output_dir, intro, middle, outro, o
             print(f"📱 Alt-ending TikTok version: {tk}")
 
     narration_path.unlink(missing_ok=True)
-    print(f"\n✅ Done: {final_path}")
+    print(f"\n{M.DONE} {final_path}")
     if args.tiktok:
         tk = output_dir / f"{final_path.stem}_tiktok.mp4"
         tiktok_export(final_path, tk, config)
@@ -97,7 +98,7 @@ def main():
     prog = Progress(args.script, args.start_over)
     todo = prog.pending(stories)
     for n, (i, story) in enumerate(todo):
-        print(f"\n=== Story {i}/{len(stories)} ===")
+        print(f"\n{M.STORY_HEADER} {i}/{len(stories)} ===")
         process_story(story, args, config, proc, output_dir, intro, middle, outro, outro2)
         prog.mark_done(story)
         left = len(todo) - n - 1

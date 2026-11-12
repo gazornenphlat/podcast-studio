@@ -16,32 +16,58 @@ from pathlib import Path
 
 import requests
 
-DEFAULT_SAMPLE_RATE = 48000
-
 
 # ---------------------------------------------------------------------------
 # Config / sequencing
 # ---------------------------------------------------------------------------
 
 def _reject_duplicate_keys(pairs):
-    seen = set()
-    for key, _ in pairs:
+    """JSON silently keeps the LAST of two equal keys; refuse instead."""
+    seen = {}
+    for key, value in pairs:
         if key in seen:
-            raise ValueError(f"Duplicate key in config: {key!r} (JSON keeps the last one silently)")
-        seen.add(key)
-    return dict(pairs)
+            raise DuplicateKeyError(key)
+        seen[key] = value
+    return seen
+
+
+class DuplicateKeyError(ValueError):
+    pass
+
+
+def load_json_file(path):
+    """Read a JSON file, refusing duplicate keys with the file and key named."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f, object_pairs_hook=_reject_duplicate_keys)
+    except DuplicateKeyError as ex:
+        raise ValueError(f"Duplicate key {ex.args[0]!r} in {path} — JSON keeps only the last one, "
+                         "so the earlier value is silently ignored. Remove one of them.") from None
 
 
 def load_config(config_path="config.json"):
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f, object_pairs_hook=_reject_duplicate_keys)
+    return load_json_file(config_path)
+
+
+TEST_ENV = "PODCAST_TEST_RUN"
+_TEST_SEQ = {}
+
+
+def is_test():
+    """True during a --test run: nothing is counted, scheduled or recorded."""
+    return os.environ.get(TEST_ENV) == "1"
 
 
 def get_next_sequence(sequence_file):
-    """Read, increment, and persist a sequential counter. Starts at 1."""
+    """Read, increment, and persist a sequential counter. Starts at 1.
+    In a test run the number is used but sequence.json is left alone."""
+    if is_test():
+        key = str(Path(sequence_file).resolve())
+        _TEST_SEQ[key] = _TEST_SEQ.get(key, peek_next_sequence(sequence_file) - 1) + 1
+        return _TEST_SEQ[key]
     path = Path(sequence_file)
     if path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = load_json_file(path)
     else:
         data = {"seq": 0}
     data["seq"] += 1
@@ -51,14 +77,19 @@ def get_next_sequence(sequence_file):
 
 def peek_next_sequence(sequence_file):
     """The number get_next_sequence() would return next, without consuming it."""
+    if is_test() and str(Path(sequence_file).resolve()) in _TEST_SEQ:
+        return _TEST_SEQ[str(Path(sequence_file).resolve())] + 1
     path = Path(sequence_file)
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8")).get("seq", 0) + 1
+        return load_json_file(path).get("seq", 0) + 1
     return 1
 
 
 def set_sequence(sequence_file, value):
-    """Record `value` as the last-used sequence number."""
+    """Record `value` as the last-used sequence number (not in a test run)."""
+    if is_test():
+        _TEST_SEQ[str(Path(sequence_file).resolve())] = value
+        return
     Path(sequence_file).write_text(json.dumps({"seq": value}), encoding="utf-8")
 
 
@@ -517,9 +548,46 @@ def kokoro_tts(text, config, out_path):
     return out_path
 
 
+def voicestudio_tts(text, config, out_path):
+    """VoiceStudio (the desktop/backend app, default http://127.0.0.1:3900) through its
+    OpenAI-compatible POST /v1/audio/speech. Set voicestudio.server_url, and voice to a
+    voice-profile name or id from VoiceStudio (see GET /v1/audio/voices).
+    Loopback needs no key; for a remote server set voicestudio.api_key (sent as Bearer)."""
+    v = config.get("voicestudio", {})
+    base = (v.get("server_url") or "http://127.0.0.1:3900").strip().rstrip("/")
+    if "://" not in base:
+        base = "http://" + base
+    headers = {}
+    key = v.get("api_key") or os.environ.get(v.get("api_key_env", "VOICESTUDIO_API_KEY"))
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    payload = {
+        "model": v.get("model", "omnivoice"),
+        "input": text,
+        "voice": v.get("voice", "default"),
+        "speed": float(v.get("speed", 1.0)),
+        "response_format": "wav",
+    }
+    if v.get("language"):
+        payload["language"] = v["language"]
+    if v.get("instructions"):
+        payload["instructions"] = v["instructions"]
+    try:
+        resp = requests.post(base + "/v1/audio/speech", json=payload, headers=headers,
+                             timeout=int(v.get("timeout", 900)))
+    except requests.exceptions.ConnectionError as e:
+        raise RuntimeError(
+            f"Couldn't reach VoiceStudio at {base}. Start the VoiceStudio app (or backend) "
+            "and check voicestudio.server_url in config.json.") from e
+    if not resp.ok:
+        raise RuntimeError(f"VoiceStudio error ({resp.status_code}) at {base}: {resp.text[:300]}")
+    Path(out_path).write_bytes(resp.content)
+    return out_path
+
+
 def synthesize_narration(text, config, output_dir, base_name="_narration_tmp"):
     """Dispatches to the configured TTS engine (config['tts_engine']:
-    'google', 'piper' or 'kokoro') and returns the path to the resulting audio file."""
+    'google', 'piper', 'kokoro' or 'voicestudio') and returns the path to the resulting audio file."""
     engine = config.get("tts_engine", "google")
     output_dir = Path(output_dir)
 
@@ -532,8 +600,11 @@ def synthesize_narration(text, config, output_dir, base_name="_narration_tmp"):
     elif engine == "kokoro":
         out_path = output_dir / f"{base_name}.wav"
         kokoro_tts(text, config, out_path)
+    elif engine == "voicestudio":
+        out_path = output_dir / f"{base_name}.wav"
+        voicestudio_tts(text, config, out_path)
     else:
-        raise ValueError(f"Unknown tts_engine '{engine}' — use 'google', 'piper' or 'kokoro'.")
+        raise ValueError(f"Unknown tts_engine '{engine}' — use 'google', 'piper', 'kokoro' or 'voicestudio'.")
 
     return out_path
 
@@ -626,6 +697,13 @@ def extract_audio(video_path, out_path):
     return out_path
 
 
+# Every segment of a loop is encoded with these settings. The concat demuxer
+# copies packets, so all pieces must share one codec: the middle clip can come
+# from any encoder, and the reversed copy used to be libx264 (corrupt output).
+_LOOP_ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+             "-pix_fmt", "yuv420p", "-c:a", "aac"]
+
+
 def build_looped_video(middle_path, target_duration, out_path):
     """Ping-pong (forward/reverse) loop `middle_path` until it covers
     target_duration, then trim to exactly that length."""
@@ -634,15 +712,17 @@ def build_looped_video(middle_path, target_duration, out_path):
         raise RuntimeError("Middle video has zero duration.")
 
     with tempfile.TemporaryDirectory() as tmp:
+        forward_path = os.path.join(tmp, "forward.mp4")
         reversed_path = os.path.join(tmp, "reversed.mp4")
-        run(["ffmpeg", "-y", "-i", str(middle_path), "-vf", "reverse", "-af", "areverse",
-             str(reversed_path)])
+        run(["ffmpeg", "-y", "-i", str(middle_path), *_LOOP_ENC, forward_path])
+        run(["ffmpeg", "-y", "-i", forward_path, "-vf", "reverse", "-af", "areverse",
+             *_LOOP_ENC, reversed_path])
 
         segments = []
         total = 0.0
         forward = True
         while total < target_duration:
-            segments.append(middle_path if forward else reversed_path)
+            segments.append(forward_path if forward else reversed_path)
             total += clip_dur
             forward = not forward
 
@@ -653,9 +733,10 @@ def build_looped_video(middle_path, target_duration, out_path):
         run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_path,
              "-c", "copy", looped_raw])
 
+        # Re-encode the trim: stream copy can only cut at keyframes, so the
+        # length came out a few hundredths of a second off.
         run(["ffmpeg", "-y", "-i", looped_raw, "-t", f"{target_duration:.3f}",
-             "-c:v", "libx264", "-crf", "18", "-preset", "fast",
-             "-c:a", "aac", "-b:a", "192k", str(out_path)])
+             *_LOOP_ENC, str(out_path)])
 
     return out_path
 
@@ -1045,13 +1126,13 @@ def mix_music_bed(in_path, music_path, start, length, volume, fade_seconds, out_
     length = max(0.1, float(length))
     fade = max(0.0, min(float(fade_seconds), length / 2))
     delay_ms = int(round(max(0.0, start) * 1000))
-    chain = (f"aformat=sample_rates={DEFAULT_SAMPLE_RATE}:channel_layouts=stereo,"
+    chain = ("aformat=sample_rates=48000:channel_layouts=stereo,"
              f"atrim=0:{length:.3f},asetpts=PTS-STARTPTS")
     if fade > 0:
         chain += f",afade=t=in:st=0:d={fade:.3f},afade=t=out:st={length - fade:.3f}:d={fade:.3f}"
     chain += f",volume={float(volume):.3f},adelay={delay_ms}|{delay_ms}"
     fc = (f"[1:a]{chain}[m];"
-          f"[0:a]aformat=sample_rates={DEFAULT_SAMPLE_RATE}:channel_layouts=stereo[b];"
+          "[0:a]aformat=sample_rates=48000:channel_layouts=stereo[b];"
           "[b][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]")
     cmd = ["ffmpeg", "-y", "-i", str(in_path), "-stream_loop", "-1", "-i", str(music_path),
            "-filter_complex", fc]

@@ -15,6 +15,7 @@ Configure it per process in config.json:
       "url": "http://127.0.0.1:5050"                # optional: ask a running scheduler to pick it up now
     }
 """
+import markers as M
 import datetime as dt
 import json
 import os
@@ -31,6 +32,9 @@ def _abs(p):
 def hand_off(config, title, video, tiktok=None, mp3=None, script=None, extra=None):
     sch = config.get("scheduler") or {}
     if not sch.get("enabled"):
+        return None
+    if os.environ.get("PODCAST_TEST_RUN") == "1":
+        print("🧪 Test run — not sent to the Content Scheduler.")
         return None
     series = sch.get("series")
     if not series:
@@ -68,7 +72,7 @@ def hand_off(config, title, video, tiktok=None, mp3=None, script=None, extra=Non
             r = requests.post(f"{url}/api/inbox/ingest", timeout=10, headers=headers)
             for item in (r.json().get("scheduled") or []):
                 if item.get("title") == note["title"] and item.get("series") == series:
-                    print(f"📅 Scheduled: {series} – {note['title']} → {item['date']}")
+                    print(f"{M.SCHEDULED} {series} – {note['title']} → {item['date']}")
                     return item
         except Exception:
             pass                            # not running: it will pick the note up when it starts

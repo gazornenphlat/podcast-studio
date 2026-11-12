@@ -50,7 +50,7 @@ dialog{border:0;border-radius:10px;padding:20px;width:min(480px,92vw)}dialog::ba
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 14px;border-radius:6px;opacity:0;transition:.2s;pointer-events:none}
 .toast.show{opacity:1}
 </style></head><body>
-<header><h1>Content Scheduler</h1>
+<header><h1>Content Scheduler</h1><a href="/studio" style="margin-left:12px;font-size:14px">→ Studio</a>
  <button class="ghost" onclick="act('/api/test-reminder').then(r=>toast(r.errors.length?r.errors.join(' | '):'Test reminder sent'))">Test reminders</button>
  <button class="ghost" onclick="act('/api/run-now').then(()=>toast('Today\'s check ran'))">Run today's check</button>
  <button class="ghost" onclick="act('/api/backup').then(()=>toast('Backup saved'))">Back up now</button>

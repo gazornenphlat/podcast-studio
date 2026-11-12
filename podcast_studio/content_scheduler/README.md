@@ -66,7 +66,7 @@ On GNOME, tray icons need the "AppIndicator and KStatusNotifierItem Support" ext
 | Site | Auto-post? | Needs |
 |---|---|---|
 | Website (WordPress) | Yes | Application password in secrets |
-| X / Twitter | Yes | Paid API tier keys |
+| X / Twitter | Text only, never video | Paid API tier keys. Video episodes always get a reminder |
 | YouTube | Yes, with a video file | Google OAuth + `next_post.file` |
-| Instagram | Yes, with an image | Business/Creator account + public `media_url` |
+| Instagram | Images only, never video | Business/Creator account + public `media_url`. Video episodes always get a reminder |
 | TikTok, Rumble, Substack | No | You get a reminder with the upload link |

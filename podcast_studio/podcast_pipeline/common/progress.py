@@ -5,6 +5,8 @@ Saved in the process folder as progress.json, per script file. Stories are
 recognised by their text, so editing one story or adding new ones to the
 file doesn't lose track of the ones already done. --start-over forgets it.
 """
+from utils import is_test, load_json_file
+import markers as M
 import hashlib
 import json
 import os
@@ -23,25 +25,38 @@ class Progress:
         self.path = Path(FILE).resolve()          # process folder (setup() chdirs there)
         self.key = str(Path(script_path).resolve()).lower()
         try:
-            self.all = json.loads(self.path.read_text(encoding="utf-8"))
+            self.all = load_json_file(self.path)
         except (OSError, ValueError):
             self.all = {}
         if start_over:
             self.all.pop(self.key, None)
-            self.save()
+            if not is_test():
+                self.save()
             print("↺ Starting over: progress for this script cleared.")
         self.me = self.all.setdefault(self.key, {"done": [], "rewrites": {}})
         self.me.setdefault("done", []); self.me.setdefault("rewrites", {})
 
     def save(self):
+        if is_test():
+            # A test run may cache WITN rewrites (a real run reuses them) but must never
+            # change what is done or reset anything: merge only the rewrite cache into the file on disk.
+            try:
+                data = load_json_file(self.path)
+            except (OSError, ValueError):
+                data = {}
+            data.setdefault(self.key, {"done": [], "rewrites": {}})["rewrites"] = self.me.get("rewrites", {})
+        else:
+            data = self.all
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.all, indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, self.path)
 
     def is_done(self, story):
         return story_key(story) in self.me["done"]
 
     def mark_done(self, story):
+        if os.environ.get("PODCAST_TEST_RUN") == "1":
+            return                                    # test runs never count as done
         k = story_key(story)
         if k not in self.me["done"]:
             self.me["done"].append(k)
@@ -59,25 +74,15 @@ class Progress:
                   "Add new stories, or run with --start-over to make them again.")
         return todo
 
-    def has_flag(self, story, name):
-        """True if `name` is set for `story`."""
-        d = self.me.setdefault(name, [])
-        return story_key(story) in d
-
-    def mark_flag(self, story, name, value=True):
-        """Set (or clear) a per-story marker and persist it."""
+    def flag(self, story, name, value=None):
+        """Small per-story markers (e.g. already added to the Word file)."""
         d = self.me.setdefault(name, [])
         k = story_key(story)
-        if value and k not in d:
+        if value is None:
+            return k in d
+        if value and k not in d and os.environ.get("PODCAST_TEST_RUN") != "1":
             d.append(k); self.save()
         return value
-
-    def flag(self, story, name, value=None):
-        """Small per-story markers (e.g. already added to the Word file).
-        Prefer has_flag() / mark_flag()."""
-        if value is None:
-            return self.has_flag(story, name)
-        return self.mark_flag(story, name, value)
 
     # WITN: cache each rewrite so stopping (or quitting at the image pause)
     # never asks the LLM to rewrite the same story twice.
@@ -95,7 +100,7 @@ def ask_continue(left, next_label=""):
         return True
     nxt = f" — next: {next_label[:60]}" if next_label else ""
     try:
-        a = input(f"\nContinue with the next story? ({left} left{nxt}) [Y/n]: ")
+        a = input(f"\n{M.PROMPT_CONTINUE} ({left} left{nxt}) [Y/n]: ")
     except EOFError:
         return True
     if a.strip().lower() in ("n", "no", "q", "quit", "stop", "exit"):
