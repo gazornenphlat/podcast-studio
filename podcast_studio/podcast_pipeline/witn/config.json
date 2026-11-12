@@ -87,28 +87,7 @@
     "url": "http://127.0.0.1:5050"
   },
   "rewrite": {
-    "instructions": "Rewrite the following story in your own words as a lively script to be read aloud. Keep every fact, name and number. Keep it about the same length.",
+    "instructions": "Rewrite the following story as a lively, humorous script to be read aloud. Keep every fact, name and number, and keep the story's ending. Adult humour is fine where the story supports it. Keep it about the same length, with no stage directions or sound effects.",
     "max_tokens": 1500
-  },
-  "image_gen": {
-    "enabled": false,
-    "workflow_file": "comfy_txt2img.json",
-    "checkpoint": "v1-5-pruned-emaonly.safetensors",
-    "negative_prompt": "text, letters, watermark, blurry, lowres",
-    "width": 896,
-    "height": 512,
-    "steps": 20,
-    "cfg": 7.0,
-    "timeout_seconds": 900,
-    "workers": [
-      {
-        "name": "780M (this PC)",
-        "url": "http://127.0.0.1:8188"
-      },
-      {
-        "name": "6900HX",
-        "url": "http://YOUR-6900HX-IP:8188"
-      }
-    ]
   }
 }

@@ -67,7 +67,7 @@ Add to it when something changes.
 
 - Pipeline runs on the Radeon 780M machine (32 GB; 4 GB given to the GPU, rest is system RAM).
 - Also: Ryzen 9 6900HX with Radeon 680M (32 GB), Ryzen 7 PRO 5850U with Vega 8 (32 GB).
-- Image generation: ComfyUI (ZLUDA build). The 5850U's Vega iGPU is not on the supported list, so it is not an image worker.
+- Image generation: ComfyUI was removed on 2026-11-12 (owner's choice). Images are still made by hand from the printed prompts.
 
 ## Owner setup and preferences
 
