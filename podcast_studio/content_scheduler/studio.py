@@ -218,9 +218,7 @@ def processes():
         except (OSError, ValueError):
             seq = 0
         j = running_job(key)
-        ig = cfg.get("image_gen") or {}
-        out.append({"key": key, **meta, "image_workers": [w.get("name") for w in ig.get("workers", [])],
-                    "image_gen": bool(ig.get("enabled")), "series": (cfg.get("scheduler") or {}).get("series", ""),
+        out.append({"key": key, **meta, "series": (cfg.get("scheduler") or {}).get("series", ""),
                     "prefix": (cfg.get("process") or {}).get("prefix", key.upper()),
                     "config_error": cfg_error,
                     "tts": cfg.get("tts_engine", "google"), "text": text, "stories": len(stories),
@@ -265,8 +263,6 @@ def run():
             cmd.append("--tiktok")
         if meta["images"] and b.get("images"):
             cmd += ["--images", str(int(b["images"]))]
-    if b.get("image_worker") and meta["images"]:
-        cmd += ["--image-worker", str(b["image_worker"])]
     if b.get("tts") in ("google", "piper", "kokoro"):
         cmd += ["--tts-engine", b["tts"]]
     if b.get("start_over"):

@@ -63,20 +63,3 @@ asset folders (`WINT/`, `cocku/`...) become `<process>/assets/`, old sequence
 files become `<process>/sequence.json` (copy the number over to continue counting,
 e.g. `{"seq": 12}`), and output now goes to each process's own `output/`
 instead of one shared folder.
-
-## Automatic images with ComfyUI (optional)
-
-Aesop and WITN can make their story images on a ComfyUI worker, so the pause only
-waits for images that could not be made. It is off by default: set `image_gen.enabled`
-to `true` in that process's `config.json`.
-
-1. Install ComfyUI on each machine that will make images. On AMD Radeon APUs on Windows,
-   use the ZLUDA build: https://github.com/patientx/ComfyUI-Zluda (it lists the 680M and 780M).
-   Put a checkpoint in `ComfyUI/models/checkpoints/` and set `image_gen.checkpoint` to its file name.
-2. Start ComfyUI with `--listen` so other computers can reach it. It has no login: use it on your home network only.
-3. List the machines in `image_gen.workers`, in order of preference. A worker that doesn't answer is skipped.
-4. In Studio, pick "Any worker" or a named machine before you start. From the terminal, add `--image-worker "6900HX"`.
-
-The workflow is `common/comfy_txt2img.json`. Its size comes from `image_gen.width` and `image_gen.height`.
-Use sizes that suit your VRAM: 4 GB runs better at 896×512 than at 1280×720.
-Images are made in the same order and under the same names as the manual ones.
