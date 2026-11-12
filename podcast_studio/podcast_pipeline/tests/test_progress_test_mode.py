@@ -14,14 +14,20 @@ import progress as P  # noqa: E402
 
 @pytest.fixture
 def folder(monkeypatch):
+    orig = os.getcwd()
     with tempfile.TemporaryDirectory() as d:
         monkeypatch.chdir(d)
         script = Path(d) / "script.txt"
         script.write_text("x\n", encoding="utf-8")
         key = str(script.resolve()).lower()
         Path(d, "progress.json").write_text(json.dumps({key: {"done": ["abc"], "rewrites": {}}}), encoding="utf-8")
-        yield Path(d), script, key
-        monkeypatch.delenv("PODCAST_TEST_RUN", raising=False)
+        try:
+            yield Path(d), script, key
+        finally:
+            # Windows can't delete the folder while it is the working directory,
+            # so leave it before the temp folder is removed.
+            os.chdir(orig)
+            monkeypatch.delenv("PODCAST_TEST_RUN", raising=False)
 
 
 def test_test_run_start_over_keeps_real_progress(folder, monkeypatch):
