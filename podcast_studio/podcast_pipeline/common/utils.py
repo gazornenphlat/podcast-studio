@@ -657,6 +657,13 @@ def extract_audio(video_path, out_path):
     return out_path
 
 
+# Every segment of a loop is encoded with these settings. The concat demuxer
+# copies packets, so all pieces must share one codec: the middle clip can come
+# from any encoder, and the reversed copy used to be libx264 (corrupt output).
+_LOOP_ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+             "-pix_fmt", "yuv420p", "-c:a", "aac"]
+
+
 def build_looped_video(middle_path, target_duration, out_path):
     """Ping-pong (forward/reverse) loop `middle_path` until it covers
     target_duration, then trim to exactly that length."""
@@ -665,15 +672,17 @@ def build_looped_video(middle_path, target_duration, out_path):
         raise RuntimeError("Middle video has zero duration.")
 
     with tempfile.TemporaryDirectory() as tmp:
+        forward_path = os.path.join(tmp, "forward.mp4")
         reversed_path = os.path.join(tmp, "reversed.mp4")
-        run(["ffmpeg", "-y", "-i", str(middle_path), "-vf", "reverse", "-af", "areverse",
-             str(reversed_path)])
+        run(["ffmpeg", "-y", "-i", str(middle_path), *_LOOP_ENC, forward_path])
+        run(["ffmpeg", "-y", "-i", forward_path, "-vf", "reverse", "-af", "areverse",
+             *_LOOP_ENC, reversed_path])
 
         segments = []
         total = 0.0
         forward = True
         while total < target_duration:
-            segments.append(middle_path if forward else reversed_path)
+            segments.append(forward_path if forward else reversed_path)
             total += clip_dur
             forward = not forward
 
@@ -684,8 +693,10 @@ def build_looped_video(middle_path, target_duration, out_path):
         run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_path,
              "-c", "copy", looped_raw])
 
+        # Re-encode the trim: stream copy can only cut at keyframes, so the
+        # length came out a few hundredths of a second off.
         run(["ffmpeg", "-y", "-i", looped_raw, "-t", f"{target_duration:.3f}",
-             "-c", "copy", str(out_path)])
+             *_LOOP_ENC, str(out_path)])
 
     return out_path
 

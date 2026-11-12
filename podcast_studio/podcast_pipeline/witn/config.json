@@ -87,7 +87,7 @@
     "url": "http://127.0.0.1:5050"
   },
   "rewrite": {
-    "instructions": "Rewrite the following story in your own words as a lively script to be read aloud. Keep every fact, name and number. Keep it about the same length.",
+    "instructions": "Rewrite the following story as a lively, humorous script to be read aloud. Keep every fact, name and number, and keep the story's ending. Adult humour is fine where the story supports it. Keep it about the same length, with no stage directions or sound effects.",
     "max_tokens": 1500
   }
 }
