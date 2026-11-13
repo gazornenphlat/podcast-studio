@@ -217,3 +217,36 @@ def test_config_yaml_values_win_over_environment(monkeypatch, tmp_path):
     finally:
         monkeypatch.undo()
         VB.configure()
+
+
+def _client():
+    app = __import__("flask").Flask(__name__)
+    app.register_blueprint(VB.bp)
+    return app.test_client()
+
+
+def test_powershell_scripts_queue_file_is_left_alone(env):
+    """The PowerShell script keeps batch-jobs.json (BOM, capitalised keys) in the same folder."""
+    VB.DATA_DIR.mkdir(parents=True)
+    ps = VB.DATA_DIR / "batch-jobs.json"
+    content = b"\xef\xbb\xbf" + json.dumps([{"Id": "ab12cd34", "Status": "Completed"}]).encode()
+    ps.write_bytes(content)
+    r = _client().get("/api/vs/jobs")
+    assert r.status_code == 200 and r.get_json()["jobs"] == []
+    txt = _text(env, ["hi"])
+    assert _client().post("/api/vs/jobs", json={"input_file": str(txt), "voices": [{"voice_id": "v1", "name": "Blue Nun"}]}).status_code == 200
+    assert ps.read_bytes() == content
+
+
+def test_broken_queue_file_gives_a_readable_error(env):
+    VB.DATA_DIR.mkdir(parents=True)
+    VB._jobs_file().write_text("{not json", encoding="utf-8")
+    r = _client().get("/api/vs/jobs")
+    assert r.status_code == 500 and "studio-batch-jobs.json" in r.get_json()["error"]
+
+
+def test_bom_and_foreign_entries_are_tolerated(env):
+    VB.DATA_DIR.mkdir(parents=True)
+    good = {"id": "g1", "status": "Completed", "input_file": "x", "output_folder": "o", "voice_id": "v1", "voice_name": "n"}
+    VB._jobs_file().write_bytes(b"\xef\xbb\xbf" + json.dumps([good, {"Id": "old"}]).encode())
+    assert [j["id"] for j in VB._load_jobs()] == ["g1"]

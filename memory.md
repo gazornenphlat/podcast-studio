@@ -22,6 +22,8 @@ Add to it when something changes.
   works through `generated.json` in each output folder (voice + text → file), because continuing
   numbers never collide by name. Stop finishes the current line and returns the run to Pending.
   Settings are the `voicestudio:` block in config.yaml (api_key in secrets.yaml).
+  The queue is saved as `studio-batch-jobs.json` in the data folder. It must not share the PowerShell
+  script's `batch-jobs.json` (BOM, capitalised keys): reading that file gave "Queue unavailable / Internal server error".
 - **Design:** the owner's DESIGN.md, "Cream Watercolor Contemplative Mobile".
 - **Fonts and icons** come from Google Fonts and the Iconify CDN, so the page needs internet for them.
 - Tested end to end with a stand-in LLM and Kokoro: rewrite → images → build → scheduled.
