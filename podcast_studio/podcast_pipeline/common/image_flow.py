@@ -16,7 +16,7 @@ from pathlib import Path
 
 from schedule_handoff import hand_off
 from steps import (setup, tts_marker, build_companion_audio, prepare_aesop_batch,
-                   wait_for_images, story_portions, save_script)
+                   wait_for_images, story_portions, save_script, save_seo)
 from utils import (
     build_filename, set_sequence, parse_script_file, find_music_bed, mix_music_bed,
     synthesize_narration, get_duration, crossfade_many, tiktok_export,
@@ -100,11 +100,13 @@ def process_story(story, args, config, proc, output_dir, intro, middle, outro, p
         tiktok_export(final_path, tk, config)
         print(f"📱 TikTok version: {tk}")
     save_script(story, final_path, output_dir)
+    seo = save_seo(story, title, final_path, output_dir, config)
     print(f"🎨 Image prompts (saved before the pause): {prepared['prompt_path']}")
     hand_off(config, title, final_path,
              tiktok=output_dir / f"{final_path.stem}_tiktok.mp4" if args.tiktok else None,
              mp3=final_path.with_suffix(".mp3"),
-             script=output_dir / f"{final_path.stem}_script.txt")
+             script=output_dir / f"{final_path.stem}_script.txt",
+             extra={"seo": seo} if seo else None)
 
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png")
@@ -209,11 +211,13 @@ def process_story_title_card(story, args, config, proc, output_dir, intro, outro
         tiktok_export(final_path, tk, config)
         print(f"📱 TikTok version: {tk}")
     save_script(story, final_path, output_dir)
+    seo = save_seo(story, title, final_path, output_dir, config)
     print(f"🎨 Image prompts (saved before the pause): {prepared['prompt_path']}")
     hand_off(config, title, final_path,
              tiktok=output_dir / f"{final_path.stem}_tiktok.mp4" if args.tiktok else None,
              mp3=final_path.with_suffix(".mp3"),
-             script=output_dir / f"{final_path.stem}_script.txt")
+             script=output_dir / f"{final_path.stem}_script.txt",
+             extra={"seo": seo} if seo else None)
 
 
 def run(script_file, description, rewrite_in=None):

@@ -157,6 +157,10 @@ def build_post(ser, st, site, title=None):
     ctx = {"series": ser["name"], "number": st.get("next_number", ser.get("start_number", 1)),
            "title": title, "date": now().strftime("%Y-%m-%d"), "site": s.get("label", site),
            "hashtags": ov.get("hashtags", ser.get("hashtags", "")) or ""}
+    seo = (st.get("media", {}).get(title, {}) or {}).get("seo") or {}
+    ctx["meta_description"] = seo.get("meta_description", "")
+    ctx["focus_keyphrase"] = seo.get("focus_keyphrase", "")
+    ctx["keyphrases"] = ", ".join(seo.get("keyphrases", []))
     ctx["description"] = render(ov.get("description", ser.get("description", "")), ctx).strip()
     full_title = render(ov.get("title_template", ser.get("title_template", t.get("title", "{title}"))), ctx).strip()
     ctx["full_title"] = full_title
@@ -392,6 +396,7 @@ def ingest_inbox():
                     title = f"{base} ({k})"; k += 1
                 q.append(title)
                 med[title] = {k2: n.get(k2) for k2 in ("video", "tiktok", "mp3", "script") if n.get(k2)}
+                if isinstance(n.get("seo"), dict): med[title]["seo"] = n["seo"]   # meta description, keyphrases
                 med[title]["added"] = now().isoformat(timespec="minutes")
                 when = queue_dates(ser, st, d)[-1]
                 med[title]["scheduled_for"] = when

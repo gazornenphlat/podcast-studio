@@ -6,10 +6,12 @@ the plumbing they have in common."""
 import markers as M
 import argparse
 import copy
+import json
 import os
 from pathlib import Path
 
 from utils import (
+    generate_seo,
     split_first_line, split_sentences, split_into_portions,
     load_config, peek_next_sequence, set_sequence, build_filename, filename_prefix,
     find_variation_file, generate_title, generate_image_prompt, resolve_canvas,
@@ -93,6 +95,20 @@ def save_script(story, final_path, output_dir):
         tts_path = output_dir / f"{final_path.stem}_script_tts.txt"
         tts_path.write_text(story["tts"].strip() + "\n", encoding="utf-8")
         print(f"📝 TTS script saved: {tts_path}")
+
+
+def save_seo(story, title, final_path, output_dir, config):
+    """Write <episode>_seo.json (meta description, focus keyphrase, keyphrases)
+    and return it, so the scheduler hand-off can carry it. Turn off with seo.enabled=false."""
+    if not (config.get("seo") or {}).get("enabled", True):
+        return None
+    seo = generate_seo(story["display"], title, config)
+    path = output_dir / f"{final_path.stem}_seo.json"
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(seo, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
+    print(f"🔎 SEO saved: {path}")
+    return seo
 
 
 def save_image_prompt(display_text, config, proc, final_path, output_dir):

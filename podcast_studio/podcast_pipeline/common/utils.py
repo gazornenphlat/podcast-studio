@@ -321,6 +321,64 @@ def generate_title(script_text, config):
     return next((line.strip() for line in title.splitlines() if line.strip()), title)
 
 
+SEO_META_MAX = 155  # Google shows about this many characters of a meta description
+
+
+def _first_json_object(text):
+    """Pull the first {...} object out of an LLM reply, or None."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end <= start:
+        return None
+    try:
+        obj = json.loads(text[start:end + 1])
+    except ValueError:
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def _trim_meta(text, limit=SEO_META_MAX):
+    text = " ".join(str(text).split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return cut + "…" if cut else text[:limit]
+
+
+def generate_seo(story_text, title, config):
+    """Meta description, focus keyphrase and related keyphrases for one story.
+    Falls back to simple values from the text if the LLM reply can't be used,
+    and marks them with "fallback": true so they can be checked."""
+    max_kp = int((config.get("seo") or {}).get("max_keyphrases", 5))
+    prompt = textwrap.dedent(f"""\
+        Write search-engine metadata for this podcast episode.
+        Reply with ONLY a JSON object, no other text, with these keys:
+        "meta_description": one sentence, under {SEO_META_MAX} characters, that makes people want to listen;
+        "focus_keyphrase": the 2-4 word phrase people would search for;
+        "keyphrases": up to {max_kp} related search phrases, as a list of strings.
+
+        TITLE: {title}
+        SCRIPT:
+        {story_text[:4000]}
+    """)
+    try:
+        data = _first_json_object(_call_ollama(prompt, config, max_tokens=400))
+    except RuntimeError as e:
+        print(f"⚠️  SEO text not generated ({e}); using a plain fallback.")
+        data = None
+
+    if data and str(data.get("meta_description", "")).strip() and str(data.get("focus_keyphrase", "")).strip():
+        kps = [str(k).strip() for k in (data.get("keyphrases") or []) if str(k).strip()][:max_kp]
+        return {"meta_description": _trim_meta(data["meta_description"]),
+                "focus_keyphrase": str(data["focus_keyphrase"]).strip(),
+                "keyphrases": kps, "fallback": False}
+
+    first = re.split(r"(?<=[.!?])\s", " ".join(story_text.split()), maxsplit=1)[0]
+    return {"meta_description": _trim_meta(first or title),
+            "focus_keyphrase": title.strip().lower()[:60],
+            "keyphrases": [], "fallback": True}
+
+
 DEFAULT_IMAGE_STYLE = ("vector art cartoon style, clean vector, flat colors, "
                        "bold outlines, humorous")
 DEFAULT_IMAGE_TONE = "humorous"

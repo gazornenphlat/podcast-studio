@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
 
 import markers as M
 from schedule_handoff import hand_off
-from steps import setup, tts_marker, build_companion_audio, save_image_prompt, save_script
+from steps import setup, tts_marker, build_companion_audio, save_image_prompt, save_script, save_seo
 from utils import (
     get_next_sequence, build_filename, parse_script_file, generate_title,
     synthesize_narration, get_duration, build_cocku_middle, crossfade_videos,
@@ -64,11 +64,13 @@ def process_story(story, args, config, proc, output_dir, intro, middle, outro):
         tiktok_export(final_path, tk, config)
         print(f"📱 TikTok version: {tk}")
     save_script(story, final_path, output_dir)
+    seo = save_seo(story, title, final_path, output_dir, config)
     save_image_prompt(story["display"], config, proc, final_path, output_dir)
     hand_off(config, title, final_path,
              tiktok=output_dir / f"{final_path.stem}_tiktok.mp4" if args.tiktok else None,
              mp3=final_path.with_suffix(".mp3"),
-             script=output_dir / f"{final_path.stem}_script.txt")
+             script=output_dir / f"{final_path.stem}_script.txt",
+             extra={"seo": seo} if seo else None)
 
 
 def main():
