@@ -70,7 +70,9 @@ _INVALID_NAME = re.compile(r'[\\/:*?"<>|]')
 
 
 def _jobs_file():
-    return DATA_DIR / "batch-jobs.json"
+    # Not "batch-jobs.json": the PowerShell batch script keeps its own queue under
+    # that name in the same folder, in a different format. Sharing it crashed the page.
+    return DATA_DIR / "studio-batch-jobs.json"
 
 
 def _auth_headers():
@@ -82,11 +84,18 @@ def _load_jobs():
     path = _jobs_file()
     if not path.exists():
         return []
-    raw = path.read_text(encoding="utf-8").strip()
+    raw = path.read_text(encoding="utf-8-sig").strip()   # -sig: tolerate a BOM from Windows editors
     if not raw:
         return []
-    data = json.loads(raw)                       # duplicate keys are rejected elsewhere; this is our own file
-    return data if isinstance(data, list) else []
+    try:
+        data = json.loads(raw)
+    except ValueError as ex:
+        raise RuntimeError(f"The batch queue file can't be read: {path} ({ex}). "
+                           "Fix or delete that file, then reload the page.") from ex
+    if not isinstance(data, list):
+        return []
+    needed = ("id", "status", "input_file", "output_folder", "voice_id", "voice_name")
+    return [j for j in data if isinstance(j, dict) and all(k in j for k in needed)]
 
 
 def _save_jobs(jobs):
@@ -148,7 +157,10 @@ def _load_ledger(folder):
     path = _ledger_path(folder)
     if not path.exists():
         return {}
-    data = json.loads(path.read_text(encoding="utf-8") or "{}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
+    except ValueError:
+        return {}                                 # unreadable ledger: lines are simply made again
     return data if isinstance(data, dict) else {}
 
 
@@ -271,6 +283,12 @@ def start_queue():
 # ---------------------------------------------------------------- routes
 def _err(msg, code=400):
     return jsonify({"error": msg}), code
+
+
+@bp.errorhandler(Exception)
+def _batch_error(ex):
+    """Any failure in /api/vs/* reaches the page as a readable message, not a bare 500."""
+    return _err(f"VoiceStudio batch error: {ex}", 500)
 
 
 @bp.route("/api/vs/profiles")
