@@ -136,6 +136,14 @@ details summary::-webkit-details-marker{display:none}
 
 .toast{position:fixed;left:50%;bottom:132px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--surface);padding:12px 22px;border-radius:9999px;font:400 13px/1.2 "Nunito Sans",sans-serif;opacity:0;transition:.25s;z-index:9;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%)}
+.field{width:100%;background:var(--surface);border:0;border-radius:var(--r-sm);padding:16px 20px;font:300 16px 'Nunito Sans',sans-serif;color:var(--ink);margin-top:10px}
+.field::placeholder{color:var(--ink-2)}
+.voice-pick{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:var(--r-sm);background:var(--surface);color:var(--ink-2);font:300 15px 'Nunito Sans',sans-serif;cursor:pointer;border:0}
+.voice-pick.on{background:rgba(122,158,126,.14);color:var(--secondary)}
+.bar{height:10px;border-radius:9999px;background:var(--surface-muted);overflow:hidden;margin-top:14px}
+.bar span{display:block;height:100%;background:var(--secondary);border-radius:9999px;transition:width .4s ease}
+.vsjob{padding:20px 0;border-top:1px solid var(--surface-muted)}
+.vsjob:first-child{border-top:0;padding-top:0}
 .hide{display:none!important}
 .sp{height:24px}
 </style>
@@ -266,12 +274,44 @@ details summary::-webkit-details-marker{display:none}
     </div>
     <div id="queue" class="section grid" style="margin-top:40px"></div>
   </section>
+
+  <!-- ===================== VOICES (VoiceStudio batch) ===================== -->
+  <section id="view-voices" class="hide">
+    <div class="section">
+      <h1 class="display-lg">Voice <em class="accent">batch.</em></h1>
+      <p class="muted body-lg" style="margin:16px 0 0">One WAV per line of a text file, made with your saved VoiceStudio voices. Runs go one after another.</p>
+    </div>
+
+    <div class="grid two section" style="margin-top:40px">
+      <div class="card">
+        <div class="label-md">Text file</div>
+        <input class="field" id="vsFile" placeholder="C:\Stories\episode.txt" autocomplete="off">
+        <div class="label-md" style="margin-top:28px">Output folder</div>
+        <input class="field" id="vsOut" placeholder="Leave empty for Music\VoiceStudio" autocomplete="off">
+        <div class="label-md" style="margin-top:28px">Voices</div>
+        <p class="muted" id="vsNote" style="margin:6px 0 0">Loading voice profiles…</p>
+        <div id="vsVoices" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
+        <div class="sp"></div>
+        <button class="btn" id="vsAdd" onclick="vsAdd()">Add to queue</button>
+      </div>
+
+      <div class="card">
+        <div class="label-md">Queue</div>
+        <h3 class="headline-lg" id="vsSummary" style="margin-top:6px">Empty</h3>
+        <div id="vsJobs" style="margin-top:24px"></div>
+        <div class="sp"></div>
+        <button class="btn" id="vsStart" onclick="vsStart()">Start queue</button>
+        <p class="muted" id="vsStartNote" style="text-align:center;margin:14px 0 0"></p>
+      </div>
+    </div>
+  </section>
 </div>
 
 <div class="tabbar">
   <nav>
     <a class="tab on" href="#make" data-v="make"><iconify-icon icon="hugeicons:mic-01"></iconify-icon>Make</a>
     <a class="tab" href="#queue" data-v="queue"><iconify-icon icon="hugeicons:task-01"></iconify-icon>Queue</a>
+    <a class="tab" href="#voices" data-v="voices"><iconify-icon icon="hugeicons:headphones"></iconify-icon>Voices</a>
     <a class="tab" href="/"><iconify-icon icon="hugeicons:calendar-03"></iconify-icon>Scheduler</a>
   </nav>
 </div>
@@ -472,11 +512,86 @@ async function drawQueue(){
 
 /* ---------- tabs ---------- */
 function route(){
-  const v = (location.hash||'#make').slice(1) === 'queue' ? 'queue' : 'make';
+  const h = (location.hash||'#make').slice(1);
+  const v = ['queue','voices'].includes(h) ? h : 'make';
   $('view-make').classList.toggle('hide', v!=='make'); $('view-queue').classList.toggle('hide', v!=='queue');
+  $('view-voices').classList.toggle('hide', v!=='voices');
   document.querySelectorAll('.tab[data-v]').forEach(t => t.classList.toggle('on', t.dataset.v===v));
   if (v==='queue') drawQueue();
+  if (v==='voices') vsLoad();
   window.scrollTo({top:0});
+}
+
+/* ---------- VoiceStudio batch ---------- */
+let vsProfiles = [], vsPicked = new Set(), vsTimer = null, vsJobs = [];
+function vsPct(j){ const p=j.progress||{}; return p.total ? Math.round(100*((p.done||0)+(p.failed||0))/p.total) : 0; }
+async function vsLoad(){
+  if (!vsProfiles.length) {
+    try {
+      const j = await api('/api/vs/profiles');
+      vsProfiles = j.profiles;
+      $('vsNote').textContent = vsProfiles.length ? 'Pick one or more. Each voice gets its own run.' : 'No saved voice profiles in VoiceStudio yet.';
+    } catch (e) { $('vsNote').textContent = e.message; }
+    $('vsVoices').innerHTML = vsProfiles.map(p =>
+      `<button class="voice-pick" data-id="${esc(p.voice_id)}" onclick="vsToggle(this)">${esc(p.name)}</button>`).join('');
+  }
+  await vsRefresh();
+}
+function vsToggle(btn){
+  const id = btn.dataset.id;
+  vsPicked.has(id) ? vsPicked.delete(id) : vsPicked.add(id);
+  btn.classList.toggle('on', vsPicked.has(id));
+}
+async function vsAdd(){
+  const input_file = $('vsFile').value.trim(), output_folder = $('vsOut').value.trim();
+  const voices = vsProfiles.filter(p => vsPicked.has(p.voice_id));
+  if (!input_file) return toast('Give the full path to a .txt file');
+  if (!voices.length) return toast('Pick at least one voice');
+  $('vsAdd').disabled = true;
+  try {
+    const r = await api('/api/vs/jobs', {input_file, output_folder, voices});
+    toast(`Added ${r.added} run${r.added===1?'':'s'} to the queue`);
+    await vsRefresh();
+  } catch (e) { toast(e.message); }
+  finally { $('vsAdd').disabled = false; }
+}
+async function vsStart(){
+  try {
+    const r = await api('/api/vs/queue/start', {});
+    if (!r.started) toast(r.message);
+  } catch (e) { toast(e.message); }
+  await vsRefresh();
+}
+async function vsRemove(id){
+  try { await fetch('/api/vs/jobs/'+encodeURIComponent(id), {method:'DELETE'}).then(async r => { if (!r.ok) throw new Error((await r.json()).error); }); }
+  catch (e) { toast(e.message); }
+  await vsRefresh();
+}
+async function vsRefresh(){
+  let j;
+  try { j = await api('/api/vs/jobs'); } catch (e) { $('vsSummary').textContent = 'Queue unavailable'; $('vsJobs').innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
+  vsJobs = j.jobs;
+  const pending = vsJobs.filter(x => x.status==='Pending').length, running = vsJobs.some(x => x.status==='Running');
+  $('vsSummary').textContent = !vsJobs.length ? 'Empty' : running ? 'Running…' : pending ? `${pending} waiting` : 'All done';
+  $('vsStart').disabled = !pending || running;
+  $('vsStartNote').textContent = `Files go to ${j.data_dir} unless you name a folder.`;
+  $('vsJobs').innerHTML = vsJobs.map((x,i) => {
+    const p = x.progress || {}, pct = vsPct(x), canRemove = x.status !== 'Running';
+    const detail = x.status==='Completed' || x.status==='Failed'
+      ? esc(x.result)
+      : `${(p.done||0)+(p.failed||0)} of ${p.total||0} lines${p.failed ? ` · ${p.failed} failed` : ''}`;
+    return `<div class="vsjob">
+      <div class="row"><div class="grow">
+        <div class="eyebrow">${i+1}. ${esc(x.voice_name)} · ${esc(x.status)}</div>
+        <h4>${esc(x.name)}</h4>
+      </div>
+      ${canRemove ? `<button class="icon-btn" title="Remove from queue" onclick="vsRemove('${esc(x.id)}')"><iconify-icon icon="hugeicons:delete-02"></iconify-icon></button>` : ''}</div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>
+      <p class="muted" style="margin:8px 0 0">${detail}</p>
+    </div>`;
+  }).join('') || '<p class="muted">Nothing queued. Add a text file and one or more voices.</p>';
+  clearTimeout(vsTimer);
+  if (running) vsTimer = setTimeout(vsRefresh, 1500);
 }
 window.addEventListener('hashchange', route);
 window.addEventListener('beforeunload', () => { if (dirty) navigator.sendBeacon && saveNow(); });
