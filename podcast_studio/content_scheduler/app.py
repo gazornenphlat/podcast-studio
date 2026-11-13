@@ -520,6 +520,8 @@ def loop():
 # ================= Studio (run the pipeline from the browser) =================
 from studio import bp as studio_bp
 app.register_blueprint(studio_bp)          # /studio
+from voicestudio_batch import bp as vs_batch_bp
+app.register_blueprint(vs_batch_bp)      # /api/vs/* (VoiceStudio batch queue)
 
 
 @app.route("/")
