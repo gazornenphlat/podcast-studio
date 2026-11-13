@@ -292,7 +292,7 @@ details summary::-webkit-details-marker{display:none}
         <p class="muted" id="vsNote" style="margin:6px 0 0">Loading voice profiles…</p>
         <div id="vsVoices" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
         <div class="sp"></div>
-        <button class="btn" id="vsAdd" onclick="vsAdd()">Add to queue</button>
+        <button class="btn quiet" id="vsAdd" onclick="vsAdd()">Add to queue</button>
       </div>
 
       <div class="card">
@@ -301,6 +301,7 @@ details summary::-webkit-details-marker{display:none}
         <div id="vsJobs" style="margin-top:24px"></div>
         <div class="sp"></div>
         <button class="btn" id="vsStart" onclick="vsStart()">Start queue</button>
+        <button class="btn quiet hide" id="vsStop" onclick="vsStop()">Stop after this line</button>
         <p class="muted" id="vsStartNote" style="text-align:center;margin:14px 0 0"></p>
       </div>
     </div>
@@ -562,6 +563,11 @@ async function vsStart(){
   } catch (e) { toast(e.message); }
   await vsRefresh();
 }
+async function vsStop(){
+  try { const r = await api('/api/vs/queue/stop', {}); if (!r.stopping) toast(r.message); }
+  catch (e) { toast(e.message); }
+  await vsRefresh();
+}
 async function vsRemove(id){
   try { await fetch('/api/vs/jobs/'+encodeURIComponent(id), {method:'DELETE'}).then(async r => { if (!r.ok) throw new Error((await r.json()).error); }); }
   catch (e) { toast(e.message); }
@@ -572,12 +578,14 @@ async function vsRefresh(){
   try { j = await api('/api/vs/jobs'); } catch (e) { $('vsSummary').textContent = 'Queue unavailable'; $('vsJobs').innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
   vsJobs = j.jobs;
   const pending = vsJobs.filter(x => x.status==='Pending').length, running = vsJobs.some(x => x.status==='Running');
-  $('vsSummary').textContent = !vsJobs.length ? 'Empty' : running ? 'Running…' : pending ? `${pending} waiting` : 'All done';
+  $('vsSummary').textContent = !vsJobs.length ? 'Empty' : j.stopping ? 'Stopping…' : running ? 'Running…' : pending ? `${pending} waiting` : 'All done';
   $('vsStart').disabled = !pending || running;
+  $('vsStart').classList.toggle('hide', running); $('vsStop').classList.toggle('hide', !running);
+  $('vsStop').disabled = !!j.stopping;
   $('vsStartNote').textContent = `Files go to ${j.data_dir} unless you name a folder.`;
   $('vsJobs').innerHTML = vsJobs.map((x,i) => {
     const p = x.progress || {}, pct = vsPct(x), canRemove = x.status !== 'Running';
-    const detail = x.status==='Completed' || x.status==='Failed'
+    const detail = x.status==='Completed' || x.status==='Failed' || (x.status==='Pending' && x.result)
       ? esc(x.result)
       : `${(p.done||0)+(p.failed||0)} of ${p.total||0} lines${p.failed ? ` · ${p.failed} failed` : ''}`;
     return `<div class="vsjob">

@@ -21,6 +21,18 @@ Start the Content Scheduler as usual, then open **http://127.0.0.1:5050/studio**
   TikTok, number of images and voice, then Start. Image prompts appear with a Copy button and
   a drop zone. Drop each image in, press play, and choose Continue or Stop here after each story.
 - **Queue:** shows each series' next posting days and its queue.
+- **Voices:** VoiceStudio batch queue. Give it a text file (one line = one WAV), an output
+  folder and one or more saved VoiceStudio voices, then Start queue. Each run has a progress
+  bar. "Stop after this line" pauses the queue; Start picks up where it left off. Lines a
+  voice has already made into a folder are skipped. VoiceStudio must be running; its address
+  is `voicestudio.url` in `content_scheduler/config.yaml`.
+
+Each episode also gets `<episode>_seo.json` (meta description, focus keyphrase, keyphrases),
+written by the local LLM. The meta description is added to post descriptions through
+`{meta_description}` in the description template. Turn it off per process with
+`"seo": {"enabled": false}` in its config.json.
+
+Check everything with one command: `python podcast_studio/check_all.py`.
 
 Runs are the normal process scripts, so everything works exactly as from the terminal:
 resume, scheduling and the Word file. The page has no login. Keep `app.host` at 127.0.0.1

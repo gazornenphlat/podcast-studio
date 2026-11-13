@@ -150,3 +150,70 @@ def test_cannot_remove_running_job(env):
     c = app.test_client()
     assert c.delete("/api/vs/jobs/r1").status_code == 409
     assert len(VB._load_jobs()) == 1
+
+
+def test_rerun_skips_lines_already_made_and_numbers_new_ones(env):
+    txt = _text(env, ["one", "two"])
+    out = env / "out"
+    VB._save_jobs([{"id": "a", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    assert VB._load_jobs()[0]["progress"]["done"] == 2
+    # same text again, plus one new line: the two old lines are skipped, the new one gets the next number
+    txt2 = _text(env, ["one", "two", "three"], "again.txt")
+    VB._save_jobs([{"id": "b", "input_file": str(txt2), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    job = [j for j in VB._load_jobs() if j["id"] == "b"][0]
+    assert job["progress"]["done"] == 1 and job["progress"]["skipped"] == 2
+    assert sorted(p.name for p in out.glob("*.wav")) == ["Blue Nun_0001.wav", "Blue Nun_0002.wav", "Blue Nun_0003.wav"]
+
+
+def test_deleted_wav_is_made_again(env):
+    txt = _text(env, ["solo"])
+    out = env / "out"
+    VB._save_jobs([{"id": "c", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    (out / "Blue Nun_0001.wav").unlink()
+    VB._save_jobs([{"id": "d", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    assert [j for j in VB._load_jobs() if j["id"] == "d"][0]["progress"]["done"] == 1
+
+
+def test_stop_returns_run_to_pending_and_resume_skips_finished_lines(env, monkeypatch):
+    txt = _text(env, ["l1", "l2", "l3"])
+    out = env / "out"
+    real = VB._speak
+
+    def speak_then_stop(text, voice_id):      # the Stop button is pressed while line 1 is being made
+        VB._STOP.set()
+        return real(text, voice_id)
+    monkeypatch.setattr(VB, "_speak", speak_then_stop)
+    VB._save_jobs([{"id": "s1", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    job = VB._load_jobs()[0]
+    assert job["status"] == "Pending" and job["result"] == "Stopped after 1 of 3 lines"
+    assert [p.name for p in out.glob("*.wav")] == ["Blue Nun_0001.wav"]
+
+    monkeypatch.setattr(VB, "_speak", real)
+    VB.start_queue(); _wait_idle()            # starting again clears the stop and finishes the rest
+    job = VB._load_jobs()[0]
+    assert job["status"] == "Completed" and job["result"] == "OK 2, Failed 0, Skipped 1"
+    assert len(list(out.glob("*.wav"))) == 3
+
+
+def test_config_yaml_values_win_over_environment(monkeypatch, tmp_path):
+    monkeypatch.setenv("VOICESTUDIO_URL", "http://env:1/v1")
+    monkeypatch.setenv("VOICESTUDIO_API_KEY", "envkey")
+    try:
+        VB.configure({"url": "http://cfg:2/v1/", "data_dir": str(tmp_path)})
+        assert VB.API_BASE == "http://cfg:2/v1" and VB.DATA_DIR == tmp_path
+        assert VB._auth_headers() == {"Authorization": "Bearer envkey"}   # empty in config -> env
+        VB.configure({})
+        assert VB.API_BASE == "http://env:1/v1"
+    finally:
+        monkeypatch.undo()
+        VB.configure()

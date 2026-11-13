@@ -21,7 +21,7 @@ with its file paths and gives it the next open posting day (`ingest_inbox()` in 
 ```
 podcast_pipeline/
   common/            shared code – edit here, not in copies
-    utils.py         config, naming, LLM calls (Ollama / LM Studio), TTS (Google / Piper / Kokoro), ffmpeg
+    utils.py         config, naming, LLM calls (Ollama / LM Studio), TTS (Google / Piper / Kokoro / VoiceStudio), SEO text, ffmpeg
     steps.py         setup() + argparse shared by processes, image-prompt prep, image pause
     image_flow.py    WITN + Aesop engine (title card, story images, per-story loop)
     rewrite.py       WITN: LLM rewrite of script-in.txt, .txt per story, running Word file
@@ -33,6 +33,7 @@ content_scheduler/
   app.py             all server logic; templates/index.html is the classic scheduler GUI
   studio.py          /studio + /api/studio/*: runs pipeline processes as subprocesses, streams
                      output, answers prompts via stdin, accepts image uploads
+  voicestudio_batch.py   /api/vs/*: VoiceStudio batch queue behind the Studio page's Voices tab
   templates/studio.html   Studio page, built to DESIGN "Cream Watercolor" (cream page, white
                      40px pebbles, no shadows, Raleway Light, terracotta used once per screen)
   config.yaml        sites, series, reminders (secrets.yaml merges on top)
@@ -48,11 +49,12 @@ python podcast_pipeline/cocku/cocku.py --script script.txt [--tiktok]
 python content_scheduler/app.py                          # or tray.py / "Content Scheduler.pyw"
 ```
 
-Common flags: `--tts-engine google|piper|kokoro`, `--start-over`, `--test` (records nothing; output/test/), `--images 1-3`, `--config`.
+Common flags: `--tts-engine google|piper|kokoro|voicestudio`, `--start-over`, `--test` (records nothing; output/test/), `--images 1-3`, `--config`.
 
 Tests and checks:
 
 ```
+python podcast_studio/check_all.py                                # everything below, in one go
 cd podcast_studio/podcast_pipeline && python -m pytest tests -q
 cd podcast_studio/content_scheduler && python -m pytest tests -q
 python podcast_studio/podcast_pipeline/tools/check_configs.py     # duplicate keys in any config

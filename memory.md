@@ -16,10 +16,30 @@ Add to it when something changes.
   start over), and live run status. Each image prompt has a copy button and a drop zone;
   uploads are converted to JPEG at the expected path. Continue / Stop here after each story.
 - **Queue tab:** shows each series' posting dates and queue.
+- **Voices tab** (2026-11-13): VoiceStudio batch queue, ported from the owner's two PowerShell
+  scripts. Backend is `content_scheduler/voicestudio_batch.py` (`/api/vs/*`). One run per voice,
+  runs in order, files `<Voice>_NNNN.wav` with numbering continuing from the folder. Skip-existing
+  works through `generated.json` in each output folder (voice + text → file), because continuing
+  numbers never collide by name. Stop finishes the current line and returns the run to Pending.
+  Settings are the `voicestudio:` block in config.yaml (api_key in secrets.yaml).
 - **Design:** the owner's DESIGN.md, "Cream Watercolor Contemplative Mobile".
 - **Fonts and icons** come from Google Fonts and the Iconify CDN, so the page needs internet for them.
 - Tested end to end with a stand-in LLM and Kokoro: rewrite → images → build → scheduled.
 
+
+**SEO per episode** (2026-11-13): `generate_seo` in `common/utils.py` asks the LLM for JSON and
+`save_seo` in `common/steps.py` writes `<episode>_seo.json`. The hand-off carries it, the scheduler
+stores it on the queued episode, and templates get `{meta_description}`, `{focus_keyphrase}` and
+`{keyphrases}`. The default description template includes `{meta_description}`. An unusable LLM
+reply falls back to the first sentence and is marked `"fallback": true`.
+
+**TTS engines:** google, piper, kokoro, voicestudio (`voicestudio` block in a process config.json;
+VoiceStudio's OpenAI-style `/v1/audio/speech`, default port 3900).
+
+**Repo:** all work is merged through PRs on `gazornenphlat/podcast-studio`. CI (Windows, Python
+3.14) runs `podcast_studio/check_all.py` on main and on PRs to main. The owner's git clone is at
+`T:\sync\PROJECTS\podcast_studio_github\podcast-studio`; the older `T:\sync\PROJECTS\podcast_studio`
+folder is not a git repository.
 
 **Pipeline → scheduler hand-off**
 - Every video process (cocku, confuscius, witn, aesop) hands finished episodes to the
@@ -112,5 +132,6 @@ Add to it when something changes.
 
 - The scheduler isn't set to start with Windows yet. The owner asked about it on 2026-10-17
   but stopped the check. `content_scheduler/service/install_windows.ps1` exists for this.
-- `rewrite.instructions` is still the generic placeholder. The WITN tone hasn't been set.
+- WITN `rewrite.instructions` is Claude's humorous draft (2026-11-12). The owner hasn't confirmed the tone.
+- VoiceStudio (TTS engine `voicestudio`, the Voices tab) and the SEO text are tested only with stand-ins, not the real VoiceStudio or LLM.
 - End-to-end runs with stand-ins (fake LLM, fake Kokoro, ffmpeg clips) are done for all five processes and the Studio API (2026-11-02). Not yet run with the real LLM, the real Kokoro server or real images.

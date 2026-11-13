@@ -36,10 +36,23 @@ snooze:
 # ------------------------------------------------------------
 templates:
   title: "{series} #{number} – {title}"
+  # {meta_description}, {focus_keyphrase} and {keyphrases} come from each episode's
+  # SEO file; they are empty (and their block is dropped) when an episode has none.
   description: |
     {description}
 
+    {meta_description}
+
     {hashtags}
+
+# ------------------------------------------------------------
+#  VoiceStudio batch queue (Studio page, Voices tab).
+#  Put api_key in secrets.yaml, not here.
+# ------------------------------------------------------------
+voicestudio:
+  url: "http://127.0.0.1:3900/v1"
+  api_key: ""
+  data_dir: ""          # empty = Music\VoiceStudio in your user folder
 
 # ------------------------------------------------------------
 #  Sites. auto_post: true only works where an API exists and

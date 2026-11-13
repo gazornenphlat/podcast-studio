@@ -66,6 +66,8 @@ def load_config():
     if os.path.exists(sf):                 # series managed in the GUI live here and replace config.yaml's list
         c["series"] = load_yaml_file(sf).get("series", []) or []
     CFG = c
+    import voicestudio_batch                # here, not at the top: it is registered after app exists
+    voicestudio_batch.configure(c.get("voicestudio"))
     return c
 
 class _LiteralDumper(yaml.SafeDumper): pass
@@ -165,7 +167,7 @@ def build_post(ser, st, site, title=None):
     full_title = render(ov.get("title_template", ser.get("title_template", t.get("title", "{title}"))), ctx).strip()
     ctx["full_title"] = full_title
     desc = render(ov.get("description_template", ser.get("description_template",
-                  t.get("description", "{description}\n\n{hashtags}"))), ctx)
+                  t.get("description", "{description}\n\n{meta_description}\n\n{hashtags}"))), ctx)
     desc = "\n\n".join(x.strip() for x in desc.strip().split("\n\n") if x.strip())   # drop empty blocks
     mx = s.get("max_length")
     return {"site": site, "label": s.get("label", site), "title": full_title, "description": desc,
