@@ -23,7 +23,8 @@ Start the Content Scheduler as usual, then open **http://127.0.0.1:5050/studio**
 - **Queue:** shows each series' next posting days and its queue.
 - **Voices:** VoiceStudio batch queue. Give it a text file (one line = one WAV), an output
   folder and one or more saved VoiceStudio voices, then Start queue. Each run has a progress
-  bar. "Stop after this line" pauses the queue; Start picks up where it left off. Lines a
+  bar. Drag a run by its grip (or focus the grip and press the up or down arrow) to change
+  the order. "Stop after this line" pauses the queue; Start picks up where it left off. Lines a
   voice has already made into a folder are skipped. VoiceStudio must be running; its address
   is `voicestudio.url` in `content_scheduler/config.yaml`.
 
