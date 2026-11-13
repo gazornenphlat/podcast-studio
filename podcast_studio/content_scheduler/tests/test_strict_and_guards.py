@@ -62,3 +62,13 @@ def test_studio_survives_absolute_image_path():
              "Save your image as:", "    D:/elsewhere/WITN-001.jpg"]
     imgs = studio.needed_images(lines, "witn")
     assert imgs and imgs[0]["path"].endswith("WITN-001.jpg")
+
+
+def test_seo_meta_description_reaches_the_post(monkeypatch):
+    import app as A
+    monkeypatch.setattr(A, "CFG", {"app": {"timezone": "America/New_York"}, "sites": {"yt": {"label": "YouTube"}}, "templates": {}})
+    ser = {"name": "S", "description": "About the show.", "hashtags": "#x"}
+    st = {"media": {"With": {"seo": {"meta_description": "Dave loses to a sink.", "focus_keyphrase": "k",
+                                      "keyphrases": ["a", "b"]}}, "Without": {}}}
+    assert A.build_post(ser, st, "yt", "With")["description"] == "About the show.\n\nDave loses to a sink.\n\n#x"
+    assert A.build_post(ser, st, "yt", "Without")["description"] == "About the show.\n\n#x"

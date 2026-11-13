@@ -13,10 +13,13 @@ PowerShell script:
   - a failed line is recorded and the run carries on
   - each run writes generation-report-<id>.csv into its output folder
 
-Settings (environment variables, optional):
-  VOICESTUDIO_URL     default http://127.0.0.1:3900/v1
-  VOICESTUDIO_API_KEY sent as a Bearer token if the server needs one
-  VOICESTUDIO_DATA    where batch-jobs.json lives; default ~/Music/VoiceStudio
+Settings live in config.yaml (api_key belongs in secrets.yaml):
+  voicestudio:
+    url: http://127.0.0.1:3900/v1
+    api_key: ""            # sent as a Bearer token if the server needs one
+    data_dir: ""           # where batch-jobs.json lives; default ~/Music/VoiceStudio
+The older environment variables VOICESTUDIO_URL, VOICESTUDIO_API_KEY and
+VOICESTUDIO_DATA still work when the config.yaml value is empty.
 """
 import csv
 import hashlib
@@ -33,14 +36,35 @@ from flask import Blueprint, jsonify, request
 
 bp = Blueprint("voicestudio_batch", __name__)
 
-API_BASE = os.environ.get("VOICESTUDIO_URL", "http://127.0.0.1:3900/v1").rstrip("/")
+DEFAULT_URL = "http://127.0.0.1:3900/v1"
+API_BASE = DEFAULT_URL
+API_KEY = ""
 MODEL = "omnivoice"
 SPEED = 1.0
 FORMAT = "wav"
 TIMEOUT = 3600
-DATA_DIR = Path(os.environ.get("VOICESTUDIO_DATA") or (Path.home() / "Music" / "VoiceStudio"))
+DATA_DIR = Path.home() / "Music" / "VoiceStudio"
 
 _LOCK = threading.Lock()          # guards batch-jobs.json
+_STOP = threading.Event()         # set by the Stop button; checked between lines
+
+
+class _Stopped(Exception):
+    pass
+
+
+def configure(cfg=None):
+    """Apply the voicestudio block of config.yaml. Empty values fall back to the
+    environment variables, then to the defaults. Called by app.load_config()."""
+    global API_BASE, API_KEY, DATA_DIR
+    cfg = cfg or {}
+    API_BASE = (cfg.get("url") or os.environ.get("VOICESTUDIO_URL") or DEFAULT_URL).strip().rstrip("/")
+    API_KEY = cfg.get("api_key") or os.environ.get("VOICESTUDIO_API_KEY") or ""
+    DATA_DIR = Path(cfg.get("data_dir") or os.environ.get("VOICESTUDIO_DATA")
+                    or (Path.home() / "Music" / "VoiceStudio"))
+
+
+configure()
 _WORKER = None                    # the one queue thread, if running
 _INVALID_NAME = re.compile(r'[\\/:*?"<>|]')
 
@@ -50,8 +74,7 @@ def _jobs_file():
 
 
 def _auth_headers():
-    key = os.environ.get("VOICESTUDIO_API_KEY")
-    return {"Authorization": f"Bearer {key}"} if key else {}
+    return {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 
 # ---------------------------------------------------------------- storage
@@ -162,7 +185,11 @@ def run_job(job):
     safe = safe_voice_name(job["voice_name"])
     ledger = _load_ledger(out_dir)
     report = []
+    stopped = False
     for line_no, text in todo:
+        if _STOP.is_set():                        # Stop button: finish the line in hand, then leave
+            stopped = True
+            break
         key = _line_key(job["voice_id"], text)
         done_name = ledger.get(key)
         # Skip-existing: this voice already made this text into this folder, and the file is still there
@@ -193,6 +220,8 @@ def run_job(job):
         w = csv.DictWriter(f, fieldnames=["Line", "File", "Status", "Error"])
         w.writeheader()
         w.writerows(report)
+    if stopped:
+        raise _Stopped(f"Stopped after {prog['done'] + prog['failed']} of {prog['total']} lines")
     return prog, report_path
 
 
@@ -211,6 +240,9 @@ def _queue_loop():
                 _update_job(job["id"], status="Completed", finished_at=datetime.now().isoformat(timespec="seconds"),
                             result=f"OK {prog['done']}, Failed {prog['failed']}, Skipped {prog['skipped']}",
                             report=str(report))
+            except _Stopped as ex:               # back in the queue; finished lines are skipped next time
+                _update_job(job["id"], status="Pending", result=str(ex))
+                break
             except Exception as ex:
                 _update_job(job["id"], status="Failed", finished_at=datetime.now().isoformat(timespec="seconds"),
                             result=str(ex))
@@ -230,6 +262,7 @@ def start_queue():
         _save_jobs(jobs)
         if _WORKER and _WORKER.is_alive():
             return False
+        _STOP.clear()
         _WORKER = threading.Thread(target=_queue_loop, daemon=True)
         _WORKER.start()
         return True
@@ -246,7 +279,7 @@ def api_profiles():
         return jsonify({"profiles": list_profiles(), "server": API_BASE})
     except requests.RequestException as ex:
         return _err(f"Couldn't reach VoiceStudio at {API_BASE}: {ex}. Start VoiceStudio, "
-                    "or set VOICESTUDIO_URL.", 502)
+                    "or set voicestudio.url in config.yaml.", 502)
 
 
 @bp.route("/api/vs/jobs")
@@ -254,6 +287,7 @@ def api_jobs():
     with _LOCK:
         jobs = _load_jobs()
     return jsonify({"jobs": jobs, "running": bool(_WORKER and _WORKER.is_alive()),
+                    "stopping": _STOP.is_set() and bool(_WORKER and _WORKER.is_alive()),
                     "data_dir": str(DATA_DIR)})
 
 
@@ -298,3 +332,12 @@ def api_remove_job(jid):
 def api_start():
     started = start_queue()
     return jsonify({"started": started, "message": "" if started else "The queue is already running."})
+
+
+@bp.route("/api/vs/queue/stop", methods=["POST"])
+def api_stop():
+    """Stop after the line being generated. The run goes back to Pending."""
+    running = bool(_WORKER and _WORKER.is_alive())
+    if running:
+        _STOP.set()
+    return jsonify({"stopping": running, "message": "" if running else "The queue isn't running."})
