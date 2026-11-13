@@ -333,6 +333,27 @@ def api_add_jobs():
     return jsonify({"added": len(new)})
 
 
+@bp.route("/api/vs/jobs/order", methods=["POST"])
+def api_reorder():
+    """Put the runs in the given order of ids. The queue always takes the first
+    Pending run, so this decides what runs next. A run that is in progress keeps going.
+    Runs not named (for example, added from another window meanwhile) stay at the end."""
+    ids = (request.get_json(silent=True) or {}).get("ids")
+    if not isinstance(ids, list):
+        return _err("Send the run ids in their new order, as a list named ids.")
+    with _LOCK:
+        jobs = _load_jobs()
+        by_id = {j["id"]: j for j in jobs}
+        seen, ordered = set(), []
+        for i in ids:
+            if i in by_id and i not in seen:
+                ordered.append(by_id[i])
+                seen.add(i)
+        ordered += [j for j in jobs if j["id"] not in seen]
+        _save_jobs(ordered)
+    return jsonify({"order": [j["id"] for j in ordered]})
+
+
 @bp.route("/api/vs/jobs/<jid>", methods=["DELETE"])
 def api_remove_job(jid):
     with _LOCK:

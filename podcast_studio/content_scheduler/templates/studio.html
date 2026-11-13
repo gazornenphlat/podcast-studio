@@ -144,6 +144,10 @@ details summary::-webkit-details-marker{display:none}
 .bar span{display:block;height:100%;background:var(--secondary);border-radius:9999px;transition:width .4s ease}
 .vsjob{padding:20px 0;border-top:1px solid var(--surface-muted)}
 .vsjob:first-child{border-top:0;padding-top:0}
+.vsjob.dragging{background:var(--surface);border-radius:var(--r-sm);opacity:.85}
+.grip{width:40px;height:48px;border:0;background:transparent;color:var(--ink-2);font-size:22px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;border-radius:var(--r-sm);flex:none}
+.grip:active{cursor:grabbing}
+.grip:focus-visible{outline:2px solid var(--secondary);outline-offset:2px}
 .hide{display:none!important}
 .sp{height:24px}
 </style>
@@ -573,7 +577,52 @@ async function vsRemove(id){
   catch (e) { toast(e.message); }
   await vsRefresh();
 }
+/* Drag a run by its grip to reorder the queue. Pointer events cover mouse and touch. */
+let vsDrag = null;
+function vsDragStart(ev){
+  const row = ev.currentTarget.closest('.vsjob'); if (!row) return;
+  ev.preventDefault();
+  vsDrag = {row, before: vsOrder().join()};
+  row.classList.add('dragging');
+  // Listen on the window, not the grip: moving the row in the page drops any pointer capture on it.
+  window.addEventListener('pointermove', vsDragMove);
+  window.addEventListener('pointerup', vsDragEnd);
+  window.addEventListener('pointercancel', vsDragEnd);
+}
+function vsDragMove(ev){
+  if (!vsDrag) return;
+  const rows = [...$('vsJobs').querySelectorAll('.vsjob')].filter(r => r !== vsDrag.row);
+  const next = rows.find(r => { const b = r.getBoundingClientRect(); return ev.clientY < b.top + b.height/2; }) || null;
+  if (vsDrag.row.nextElementSibling !== next) $('vsJobs').insertBefore(vsDrag.row, next);
+}
+function vsDragEnd(ev){
+  if (!vsDrag) return;
+  window.removeEventListener('pointermove', vsDragMove);
+  window.removeEventListener('pointerup', vsDragEnd);
+  window.removeEventListener('pointercancel', vsDragEnd);
+  vsDrag.row.classList.remove('dragging');
+  const changed = vsOrder().join() !== vsDrag.before;
+  vsDrag = null;
+  changed ? vsSaveOrder() : vsRefresh();
+}
+function vsGripKey(ev){
+  if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
+  ev.preventDefault();
+  const row = ev.currentTarget.closest('.vsjob'), list = $('vsJobs');
+  const sib = ev.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+  if (!sib) return;
+  list.insertBefore(row, ev.key === 'ArrowUp' ? sib : sib.nextElementSibling);
+  const id = row.dataset.id;
+  vsSaveOrder().then(() => { const g = list.querySelector(`.vsjob[data-id="${id}"] .grip`); g && g.focus(); });
+}
+function vsOrder(){ return [...$('vsJobs').querySelectorAll('.vsjob')].map(r => r.dataset.id); }
+async function vsSaveOrder(){
+  try { await api('/api/vs/jobs/order', {ids: vsOrder()}); }
+  catch (e) { toast(e.message); }
+  await vsRefresh();
+}
 async function vsRefresh(){
+  if (vsDrag) { clearTimeout(vsTimer); vsTimer = setTimeout(vsRefresh, 1500); return; }   // don't redraw under a drag
   let j;
   try { j = await api('/api/vs/jobs'); } catch (e) { $('vsSummary').textContent = 'Queue unavailable'; $('vsJobs').innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
   vsJobs = j.jobs;
@@ -588,8 +637,10 @@ async function vsRefresh(){
     const detail = x.status==='Completed' || x.status==='Failed' || (x.status==='Pending' && x.result)
       ? esc(x.result)
       : `${(p.done||0)+(p.failed||0)} of ${p.total||0} lines${p.failed ? ` · ${p.failed} failed` : ''}`;
-    return `<div class="vsjob">
-      <div class="row"><div class="grow">
+    return `<div class="vsjob" data-id="${esc(x.id)}">
+      <div class="row">
+      <button class="grip" title="Drag to reorder (or use the up and down arrow keys)" aria-label="Reorder ${esc(x.name)}, ${esc(x.voice_name)}" onpointerdown="vsDragStart(event)" onkeydown="vsGripKey(event)"><svg width="14" height="22" viewBox="0 0 14 22" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="2"/><circle cx="11" cy="3" r="2"/><circle cx="3" cy="11" r="2"/><circle cx="11" cy="11" r="2"/><circle cx="3" cy="19" r="2"/><circle cx="11" cy="19" r="2"/></svg></button>
+      <div class="grow">
         <div class="eyebrow">${i+1}. ${esc(x.voice_name)} · ${esc(x.status)}</div>
         <h4>${esc(x.name)}</h4>
       </div>

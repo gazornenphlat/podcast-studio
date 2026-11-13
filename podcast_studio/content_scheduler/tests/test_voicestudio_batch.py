@@ -250,3 +250,31 @@ def test_bom_and_foreign_entries_are_tolerated(env):
     good = {"id": "g1", "status": "Completed", "input_file": "x", "output_folder": "o", "voice_id": "v1", "voice_name": "n"}
     VB._jobs_file().write_bytes(b"\xef\xbb\xbf" + json.dumps([good, {"Id": "old"}]).encode())
     assert [j["id"] for j in VB._load_jobs()] == ["g1"]
+
+
+def _job(i, status="Pending"):
+    return {"id": i, "status": status, "input_file": "x", "output_folder": "o", "voice_id": "v1", "voice_name": "n"}
+
+
+def test_reorder_saves_the_new_order(env):
+    VB._save_jobs([_job("a"), _job("b"), _job("c")])
+    r = _client().post("/api/vs/jobs/order", json={"ids": ["c", "a", "b"]})
+    assert r.status_code == 200 and r.get_json()["order"] == ["c", "a", "b"]
+    assert [j["id"] for j in VB._load_jobs()] == ["c", "a", "b"]
+
+
+def test_reorder_keeps_unnamed_runs_and_ignores_unknown_ids(env):
+    VB._save_jobs([_job("a"), _job("b"), _job("c")])
+    r = _client().post("/api/vs/jobs/order", json={"ids": ["b", "zzz", "b"]})
+    assert r.get_json()["order"] == ["b", "a", "c"]
+    assert _client().post("/api/vs/jobs/order", json={}).status_code == 400
+
+
+def test_queue_runs_in_the_reordered_order(env):
+    a = _text(env, ["a1"], "a.txt")
+    b = _text(env, ["b1"], "b.txt")
+    VB._save_jobs([{**_job("first"), "input_file": str(a), "output_folder": str(env / "o")},
+                   {**_job("second"), "input_file": str(b), "output_folder": str(env / "o")}])
+    _client().post("/api/vs/jobs/order", json={"ids": ["second", "first"]})
+    VB.start_queue(); _wait_idle()
+    assert [c[1] for c in Fake.calls] == ["b1", "a1"]
