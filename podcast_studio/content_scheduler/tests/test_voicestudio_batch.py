@@ -150,3 +150,33 @@ def test_cannot_remove_running_job(env):
     c = app.test_client()
     assert c.delete("/api/vs/jobs/r1").status_code == 409
     assert len(VB._load_jobs()) == 1
+
+
+def test_rerun_skips_lines_already_made_and_numbers_new_ones(env):
+    txt = _text(env, ["one", "two"])
+    out = env / "out"
+    VB._save_jobs([{"id": "a", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    assert VB._load_jobs()[0]["progress"]["done"] == 2
+    # same text again, plus one new line: the two old lines are skipped, the new one gets the next number
+    txt2 = _text(env, ["one", "two", "three"], "again.txt")
+    VB._save_jobs([{"id": "b", "input_file": str(txt2), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    job = [j for j in VB._load_jobs() if j["id"] == "b"][0]
+    assert job["progress"]["done"] == 1 and job["progress"]["skipped"] == 2
+    assert sorted(p.name for p in out.glob("*.wav")) == ["Blue Nun_0001.wav", "Blue Nun_0002.wav", "Blue Nun_0003.wav"]
+
+
+def test_deleted_wav_is_made_again(env):
+    txt = _text(env, ["solo"])
+    out = env / "out"
+    VB._save_jobs([{"id": "c", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    (out / "Blue Nun_0001.wav").unlink()
+    VB._save_jobs([{"id": "d", "input_file": str(txt), "output_folder": str(out), "voice_id": "v1",
+                    "voice_name": "Blue Nun", "status": "Pending"}])
+    VB.start_queue(); _wait_idle()
+    assert [j for j in VB._load_jobs() if j["id"] == "d"][0]["progress"]["done"] == 1
