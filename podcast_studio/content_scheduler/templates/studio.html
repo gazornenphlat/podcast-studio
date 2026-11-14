@@ -288,8 +288,14 @@ details summary::-webkit-details-marker{display:none}
 
     <div class="grid two section" style="margin-top:40px">
       <div class="card">
-        <div class="label-md">Text file</div>
-        <input class="field" id="vsFile" placeholder="C:\Stories\episode.txt" autocomplete="off">
+        <div class="label-md">Text</div>
+        <div role="group" aria-label="Where the text comes from" style="display:flex;gap:10px;margin-top:10px">
+          <button class="voice-pick on" id="vsSrcFile" aria-pressed="true" onclick="vsSource('file')">Text file</button>
+          <button class="voice-pick" id="vsSrcText" aria-pressed="false" onclick="vsSource('text')">Type it here</button>
+        </div>
+        <input class="field" id="vsFile" aria-label="Full path to the text file" placeholder="C:\Stories\episode.txt" autocomplete="off">
+        <textarea class="field hide" id="vsText" rows="7" aria-label="Text to speak, one line per WAV" placeholder="Type or paste the text. Each line becomes one WAV." style="resize:vertical;line-height:1.5"></textarea>
+        <p class="muted hide" id="vsTextNote" style="margin:8px 0 0"></p>
         <div class="label-md" style="margin-top:28px">Output folder</div>
         <input class="field" id="vsOut" placeholder="Leave empty for Music\VoiceStudio" autocomplete="off">
         <div class="label-md" style="margin-top:28px">Voices</div>
@@ -547,15 +553,31 @@ function vsToggle(btn){
   vsPicked.has(id) ? vsPicked.delete(id) : vsPicked.add(id);
   btn.classList.toggle('on', vsPicked.has(id));
 }
+let vsSrc = 'file';
+function vsSource(which){
+  vsSrc = which;
+  const text = which === 'text';
+  $('vsFile').classList.toggle('hide', text); $('vsText').classList.toggle('hide', !text); $('vsTextNote').classList.toggle('hide', !text);
+  $('vsSrcFile').classList.toggle('on', !text); $('vsSrcText').classList.toggle('on', text);
+  $('vsSrcFile').setAttribute('aria-pressed', String(!text)); $('vsSrcText').setAttribute('aria-pressed', String(text));
+  if (text) { vsCount(); $('vsText').focus(); }
+}
+function vsCount(){
+  const n = $('vsText').value.split('\n').filter(l => l.trim()).length;
+  $('vsTextNote').textContent = n ? `${n} line${n===1?'':'s'} = ${n} WAV${n===1?'':'s'} per voice` : 'One line = one WAV. Blank lines are skipped.';
+}
+document.addEventListener('input', ev => { if (ev.target.id === 'vsText') vsCount(); });
 async function vsAdd(){
-  const input_file = $('vsFile').value.trim(), output_folder = $('vsOut').value.trim();
+  const input_file = $('vsFile').value.trim(), output_folder = $('vsOut').value.trim(), text = $('vsText').value;
   const voices = vsProfiles.filter(p => vsPicked.has(p.voice_id));
-  if (!input_file) return toast('Give the full path to a .txt file');
+  if (vsSrc === 'text' && !text.trim()) return toast('Type or paste some text first');
+  if (vsSrc === 'file' && !input_file) return toast('Give the full path to a .txt file');
   if (!voices.length) return toast('Pick at least one voice');
   $('vsAdd').disabled = true;
   try {
-    const r = await api('/api/vs/jobs', {input_file, output_folder, voices});
+    const r = await api('/api/vs/jobs', vsSrc === 'text' ? {text, output_folder, voices} : {input_file, output_folder, voices});
     toast(`Added ${r.added} run${r.added===1?'':'s'} to the queue`);
+    if (vsSrc === 'text') { $('vsText').value = ''; vsCount(); }
     await vsRefresh();
   } catch (e) { toast(e.message); }
   finally { $('vsAdd').disabled = false; }
@@ -648,7 +670,7 @@ async function vsRefresh(){
       <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>
       <p class="muted" style="margin:8px 0 0">${detail}</p>
     </div>`;
-  }).join('') || '<p class="muted">Nothing queued. Add a text file and one or more voices.</p>';
+  }).join('') || '<p class="muted">Nothing queued. Add some text and one or more voices.</p>';
   clearTimeout(vsTimer);
   if (running) vsTimer = setTimeout(vsRefresh, 1500);
 }
