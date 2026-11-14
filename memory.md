@@ -22,6 +22,7 @@ Add to it when something changes.
   works through `generated.json` in each output folder (voice + text → file), because continuing
   numbers never collide by name. Stop finishes the current line and returns the run to Pending.
   Settings are the `voicestudio:` block in config.yaml (api_key in secrets.yaml).
+  Text can also be typed on the page (2026-11-14); it is saved to `<data folder>/typed/typed-<time>.txt` and then runs like a file.
   The queue is saved as `studio-batch-jobs.json` in the data folder. It must not share the PowerShell
   script's `batch-jobs.json` (BOM, capitalised keys): reading that file gave "Queue unavailable / Internal server error".
 - **Design:** the owner's DESIGN.md, "Cream Watercolor Contemplative Mobile".

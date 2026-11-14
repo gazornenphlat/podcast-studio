@@ -21,7 +21,7 @@ Start the Content Scheduler as usual, then open **http://127.0.0.1:5050/studio**
   TikTok, number of images and voice, then Start. Image prompts appear with a Copy button and
   a drop zone. Drop each image in, press play, and choose Continue or Stop here after each story.
 - **Queue:** shows each series' next posting days and its queue.
-- **Voices:** VoiceStudio batch queue. Give it a text file (one line = one WAV), an output
+- **Voices:** VoiceStudio batch queue. Give it a text file, or type the text on the page (one line = one WAV), an output
   folder and one or more saved VoiceStudio voices, then Start queue. Each run has a progress
   bar. Drag a run by its grip (or focus the grip and press the up or down arrow) to change
   the order. "Stop after this line" pauses the queue; Start picks up where it left off. Lines a

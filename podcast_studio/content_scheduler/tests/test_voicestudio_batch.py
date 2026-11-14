@@ -278,3 +278,29 @@ def test_queue_runs_in_the_reordered_order(env):
     _client().post("/api/vs/jobs/order", json={"ids": ["second", "first"]})
     VB.start_queue(); _wait_idle()
     assert [c[1] for c in Fake.calls] == ["b1", "a1"]
+
+
+def test_typed_text_is_queued_and_generated(env):
+    c = _client()
+    r = c.post("/api/vs/jobs", json={"text": "Hello there.\r\n\r\nSecond line.\n", "output_folder": str(env / "o"),
+                                     "voices": [{"voice_id": "v1", "name": "Blue Nun"}]})
+    assert r.status_code == 200 and r.get_json()["added"] == 1
+    job = VB._load_jobs()[0]
+    assert job["name"] == "Hello there." and job["progress"]["total"] == 2 and job["progress"]["skipped"] == 1
+    saved = Path(job["input_file"])
+    assert saved.parent == VB.DATA_DIR / "typed" and saved.read_text(encoding="utf-8") == "Hello there.\n\nSecond line.\n"
+    VB.start_queue(); _wait_idle()
+    assert [c2[1] for c2 in Fake.calls] == ["Hello there.", "Second line."]
+    assert sorted(p.name for p in (env / "o").glob("*.wav")) == ["Blue Nun_0001.wav", "Blue Nun_0002.wav"]
+
+
+def test_empty_typed_text_is_refused_and_long_first_line_is_shortened(env):
+    c = _client()
+    v = [{"voice_id": "v1", "name": "Blue Nun"}]
+    r = c.post("/api/vs/jobs", json={"text": "  \n ", "voices": v})
+    assert r.status_code == 400 and "Type or paste" in r.get_json()["error"]
+    assert not (VB.DATA_DIR / "typed").exists()
+    assert c.post("/api/vs/jobs", json={"text": "x" * 60, "voices": []}).status_code == 400   # no voice: nothing saved
+    assert not (VB.DATA_DIR / "typed").exists()
+    c.post("/api/vs/jobs", json={"text": "x" * 60, "voices": v})
+    assert VB._load_jobs()[0]["name"] == "x" * 40 + "…"

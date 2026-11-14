@@ -309,21 +309,41 @@ def api_jobs():
                     "data_dir": str(DATA_DIR)})
 
 
+def _save_typed_text(text):
+    """Keep typed text as a file in <data folder>/typed, so a queued run survives a restart
+    and runs exactly like a text-file run. Returns (path, short name for the queue)."""
+    folder = DATA_DIR / "typed"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"typed-{datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:4]}.txt"
+    tmp = path.with_suffix(".txt.tmp")
+    tmp.write_text(text.replace("\r\n", "\n").strip("\n") + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+    first = next((ln.strip() for ln in text.splitlines() if ln.strip()), "Typed text")
+    return str(path), (first[:40].rstrip() + "…") if len(first) > 40 else first
+
+
 @bp.route("/api/vs/jobs", methods=["POST"])
 def api_add_jobs():
     b = request.get_json(silent=True) or {}
     input_file = (b.get("input_file") or "").strip().strip('"')
     out = (b.get("output_folder") or "").strip().strip('"') or str(DATA_DIR)
     voices = b.get("voices") or []
-    if not input_file or not Path(input_file).is_file():
+    typed = b.get("text")
+    if typed is not None:                         # text typed on the page instead of a file
+        if not str(typed).strip():
+            return _err("Type or paste some text first. Each line becomes one WAV.")
+    elif not input_file or not Path(input_file).is_file():
         return _err(f"Text file not found: {input_file or '(none given)'}. Give the full path to a .txt file.")
     if not voices:
         return _err("Pick at least one voice profile.")
+    name = None
+    if typed is not None:
+        input_file, name = _save_typed_text(str(typed))
     lines = Path(input_file).read_text(encoding="utf-8-sig").splitlines()
     total = sum(1 for t in lines if t.strip())
     prog = {"total": total, "done": 0, "failed": 0, "skipped": len(lines) - total}
     now = datetime.now().isoformat(timespec="seconds")
-    new = [{"id": uuid.uuid4().hex[:8], "input_file": input_file, "name": Path(input_file).stem,
+    new = [{"id": uuid.uuid4().hex[:8], "input_file": input_file, "name": name or Path(input_file).stem,
             "output_folder": out, "voice_id": v["voice_id"], "voice_name": v.get("name") or v["voice_id"],
             "status": "Pending", "result": "", "progress": dict(prog),
             "created_at": now, "finished_at": ""} for v in voices if v.get("voice_id")]
