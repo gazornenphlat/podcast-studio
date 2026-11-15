@@ -4,6 +4,8 @@ data.json.tmp
 backups/
 google_token.json
 google_credentials.json
+series.yaml
+series.yaml.tmp
 __pycache__/
 tray.log
 inbox/

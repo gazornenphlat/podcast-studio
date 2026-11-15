@@ -1,15 +1,16 @@
 """X: no API scheduling, so this runs at post time. Needs a paid API tier."""
-import os
 from datetime import timedelta
 
 import tweepy
+
+from ._http import env
 
 LEAD_TIME = timedelta(0)
 
 
 def post(item):
-    key, secret = os.environ["X_API_KEY"], os.environ["X_API_SECRET"]
-    tok, tok_secret = os.environ["X_ACCESS_TOKEN"], os.environ["X_ACCESS_SECRET"]
+    key, secret = env("X_API_KEY"), env("X_API_SECRET")
+    tok, tok_secret = env("X_ACCESS_TOKEN"), env("X_ACCESS_SECRET")
 
     # Media upload uses the v1.1 endpoint (chunked for video).
     api = tweepy.API(tweepy.OAuth1UserHandler(key, secret, tok, tok_secret))

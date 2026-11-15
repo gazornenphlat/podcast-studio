@@ -383,7 +383,7 @@ function drawChips(p){
   const g = [];
   if (p.key !== 'audio') g.push(chip('tiktok', opts.tiktok, 'hugeicons:smart-phone-01', 'TikTok'));
   if (p.images) g.push([1,2,3].map(n => chip('img'+n, (opts.images||3)===n, n===1?'hugeicons:image-01':'hugeicons:image-02', n+(n>1?' imgs':' img'))).join(''));
-  g.push([['google','hugeicons:google'],['piper','hugeicons:voice'],['kokoro','hugeicons:mic-02']].map(([e,ic]) =>
+  g.push([['google','hugeicons:google'],['piper','hugeicons:voice'],['kokoro','hugeicons:mic-02'],['voicestudio','hugeicons:mic-01']].map(([e,ic]) =>
     chip('tts-'+e, (opts.tts||p.tts)===e, ic, e)).join(''));
   $('chips').innerHTML = g.map(x => `<div class="group">${x}</div>`).join('');
   $('overBtn').classList.toggle('on', opts.start_over);

@@ -5,32 +5,32 @@
 # ---------------------------------------------------------------
 
 # --- Secrets -------------------------------------------------------
-content_scheduler/secrets.yaml
-content_scheduler/google_credentials.json
-content_scheduler/google_token.json
+podcast_studio/content_scheduler/secrets.yaml
+podcast_studio/content_scheduler/google_credentials.json
+podcast_studio/content_scheduler/google_token.json
 .env
 *.env
 
 # --- Generated episodes and run output ---------------------------
-podcast_pipeline/*/output/
+podcast_studio/podcast_pipeline/*/output/
 **/_*_tmp.*
 **/*_tmp.mp4
 **/*_tmp.mp3
 **/*_tmp.wav
 
 # --- Per-machine run state ---------------------------------------
-podcast_pipeline/*/sequence.json
-podcast_pipeline/*/progress.json
-podcast_pipeline/*/progress.tmp
+podcast_studio/podcast_pipeline/*/sequence.json
+podcast_studio/podcast_pipeline/*/progress.json
+podcast_studio/podcast_pipeline/*/progress.tmp
 
 # --- Working scripts (content, changes every run) ---------------
-podcast_pipeline/**/script.txt
-podcast_pipeline/**/script-in.txt
-podcast_pipeline/**/script_tts.txt
+podcast_studio/podcast_pipeline/**/script.txt
+podcast_studio/podcast_pipeline/**/script-in.txt
+podcast_studio/podcast_pipeline/**/script_tts.txt
 
 # --- Large media in assets/ (keep the README) -------------------
-podcast_pipeline/*/assets/*
-!podcast_pipeline/*/assets/README.txt
+podcast_studio/podcast_pipeline/*/assets/*
+!podcast_studio/podcast_pipeline/*/assets/README.txt
 *.mp4
 *.mov
 *.mkv
@@ -49,12 +49,12 @@ podcast_pipeline/*/assets/*
 voices/
 
 # --- Content Scheduler runtime ------------------------------------
-content_scheduler/data.json
-content_scheduler/data.json.tmp
-content_scheduler/backups/
-content_scheduler/inbox/
-content_scheduler/tray.log
-content_scheduler/series.yaml.tmp
+podcast_studio/content_scheduler/data.json
+podcast_studio/content_scheduler/data.json.tmp
+podcast_studio/content_scheduler/backups/
+podcast_studio/content_scheduler/inbox/
+podcast_studio/content_scheduler/tray.log
+podcast_studio/content_scheduler/series.yaml.tmp
 
 # --- Stray copies and backups -------------------------------------
 *-old

@@ -262,8 +262,12 @@ def run():
         if b.get("tiktok", True):
             cmd.append("--tiktok")
         if meta["images"] and b.get("images"):
-            cmd += ["--images", str(int(b["images"]))]
-    if b.get("tts") in ("google", "piper", "kokoro"):
+            try:
+                n_images = int(b["images"])
+            except (TypeError, ValueError):
+                return jsonify(error="images must be a number 1-3."), 400
+            cmd += ["--images", str(max(1, min(3, n_images)))]
+    if b.get("tts") in ("google", "piper", "kokoro", "voicestudio"):
         cmd += ["--tts-engine", b["tts"]]
     if b.get("start_over"):
         cmd.append("--start-over")

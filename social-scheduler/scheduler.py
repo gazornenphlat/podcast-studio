@@ -29,26 +29,38 @@ def load_queue():
         for row in csv.DictReader(f):
             if not row.get("id"):
                 continue
-            post_at = datetime.fromisoformat(row["post_at"])
-            if post_at.tzinfo is None:
-                raise ValueError(f"{row['id']}: post_at needs a timezone offset, e.g. -04:00")
-            video = row["video_path"]
-            items.append({
-                "id": row["id"],
-                "post_at": post_at,
-                "video_path": video if os.path.isabs(video) else os.path.join(HERE, video),
-                "title": row.get("title", ""),
-                "caption": row.get("caption", ""),
-                "tags": [t.strip() for t in row.get("tags", "").split(";") if t.strip()],
-                "platforms": [p.strip().lower() for p in row["platforms"].split(";") if p.strip()],
-            })
+            try:
+                post_at = datetime.fromisoformat(row["post_at"])
+                if post_at.tzinfo is None:
+                    raise ValueError(f"{row['id']}: post_at needs a timezone offset, e.g. -04:00")
+                video = row["video_path"]
+                items.append({
+                    "id": row["id"],
+                    "post_at": post_at,
+                    "video_path": video if os.path.isabs(video) else os.path.join(HERE, video),
+                    "title": row.get("title", ""),
+                    "caption": row.get("caption", ""),
+                    "tags": [t.strip() for t in row.get("tags", "").split(";") if t.strip()],
+                    "platforms": [p.strip().lower() for p in row["platforms"].split(";") if p.strip()],
+                })
+            except (KeyError, ValueError, AttributeError, TypeError) as ex:
+                # One bad row used to abort the whole run. Skip it loudly
+                # so the rest of the queue still posts. (A short row yields
+                # None for a missing column, so .split/fromisoformat fail
+                # with AttributeError/TypeError rather than KeyError.)
+                print(f"[error] queue.csv row {row.get('id')}: {ex}; skipped")
     return items
 
 
 def load_log():
     if os.path.exists(LOG):
-        with open(LOG, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(LOG, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError) as ex:
+            # Never silently start from an empty log: every due row would
+            # look unposted and post twice. Refuse to run until it is fixed.
+            raise RuntimeError(f"{LOG} is unreadable ({ex}); fix it or move it aside")
     return {}
 
 
