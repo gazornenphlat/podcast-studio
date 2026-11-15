@@ -7,13 +7,21 @@ from datetime import timedelta
 
 import requests
 
+from ._http import env
+
 LEAD_TIME = timedelta(0)
 API = "https://open.tiktokapis.com/v2"
 CHUNK = 10 * 1024 * 1024  # 10 MB
 
 
+def chunk_count(size):
+    """How many chunks a file of `size` bytes needs: every chunk but the
+    last is exactly CHUNK, so the count is ceil(size / CHUNK)."""
+    return 1 if size <= CHUNK else math.ceil(size / CHUNK)
+
+
 def _headers():
-    return {"Authorization": f"Bearer {os.environ['TIKTOK_ACCESS_TOKEN']}",
+    return {"Authorization": f"Bearer {env('TIKTOK_ACCESS_TOKEN')}",
             "Content-Type": "application/json; charset=UTF-8"}
 
 
@@ -21,7 +29,7 @@ def post(item):
     path = item["video_path"]
     size = os.path.getsize(path)
     chunk = size if size <= CHUNK else CHUNK
-    count = 1 if size <= CHUNK else math.floor(size / CHUNK)
+    count = chunk_count(size)
 
     caption = item["caption"] + "".join(f" #{t}" for t in item["tags"])
     init = requests.post(f"{API}/post/publish/video/init/", headers=_headers(), json={

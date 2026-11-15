@@ -90,10 +90,27 @@ def save_series_file(series):
 # ================= data / backups =================
 def data_path(): return p(CFG["app"].get("data_file", "data.json"))
 
+def _load_backup():
+    """Newest readable data-*.json in backups/, or None if there is none."""
+    folder = p(CFG.get("backup", {}).get("folder", "backups"))
+    for cand in sorted(glob.glob(os.path.join(folder, "data-*.json")), reverse=True):
+        try:
+            with open(cand, encoding="utf-8") as f: return json.load(f)
+        except (OSError, ValueError) as ex:
+            print(f"WARNING: backup {cand} is unreadable ({ex})")
+    return None
+
 def load_data():
     d = {}
     if os.path.exists(data_path()):
-        with open(data_path(), encoding="utf-8") as f: d = json.load(f)
+        try:
+            with open(data_path(), encoding="utf-8") as f: d = json.load(f)
+        except (OSError, ValueError) as ex:
+            # One corrupt data.json used to 500 nearly every request until
+            # someone hand-edited the file. Fall back to the newest backup;
+            # with no readable backup, start from the defaults below.
+            print(f"WARNING: {data_path()} is unreadable ({ex}); trying the newest backup")
+            d = _load_backup() or {}
     for k, v in {"series": {}, "emails": [], "log": [], "fired": {}, "reminders": []}.items():
         d.setdefault(k, v)
     if d.get("articles") is None:      # seed once from config, then the GUI owns them
